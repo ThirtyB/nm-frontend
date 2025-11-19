@@ -18,6 +18,11 @@
           <span>首页</span>
         </el-menu-item>
         
+        <el-menu-item index="/nodes">
+          <el-icon><Monitor /></el-icon>
+          <span>节点详情</span>
+        </el-menu-item>
+        
         <el-menu-item
           v-if="authStore.user?.user_type === 'admin'"
           index="/users"
@@ -75,7 +80,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { House, User, UserFilled, ArrowDown } from '@element-plus/icons-vue'
+import { House, User, UserFilled, ArrowDown, Monitor } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -84,7 +89,9 @@ const authStore = useAuthStore()
 const getPageTitle = () => {
   const routeMap = {
     'Users': '用户管理',
-    'Dashboard': '首页'
+    'Dashboard': '首页',
+    'Nodes': '节点详情',
+    'NodeDetail': '节点详情'
   }
   return routeMap[router.currentRoute.value.name] || ''
 }

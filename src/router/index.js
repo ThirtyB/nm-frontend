@@ -30,6 +30,18 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         {
+          path: 'nodes',
+          name: 'Nodes',
+          component: () => import('@/views/Nodes.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'nodes/:ip',
+          name: 'NodeDetail',
+          component: () => import('@/views/NodeDetail.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
           path: 'users',
           name: 'Users',
           component: () => import('@/views/Users.vue'),
