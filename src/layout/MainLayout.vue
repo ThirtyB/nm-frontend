@@ -23,6 +23,11 @@
           <span>节点详情</span>
         </el-menu-item>
         
+        <el-menu-item index="/system-status">
+          <el-icon><Connection /></el-icon>
+          <span>系统存活状态</span>
+        </el-menu-item>
+        
         <el-menu-item
           v-if="authStore.user?.user_type === 'admin'"
           index="/alert-management"
@@ -88,7 +93,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { House, User, UserFilled, ArrowDown, Monitor, Warning } from '@element-plus/icons-vue'
+import { House, User, UserFilled, ArrowDown, Monitor, Warning, Connection } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -100,7 +105,8 @@ const getPageTitle = () => {
     'Dashboard': '首页',
     'Nodes': '节点详情',
     'NodeDetail': '节点详情',
-    'AlertManagement': '告警配置'
+    'AlertManagement': '告警配置',
+    'SystemStatus': '系统存活状态'
   }
   return routeMap[router.currentRoute.value.name] || ''
 }

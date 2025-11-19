@@ -52,6 +52,12 @@ const router = createRouter({
           name: 'Users',
           component: () => import('@/views/Users.vue'),
           meta: { requiresAuth: true, requiresAdmin: true }
+        },
+        {
+          path: 'system-status',
+          name: 'SystemStatus',
+          component: () => import('@/views/SystemStatus.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     }
