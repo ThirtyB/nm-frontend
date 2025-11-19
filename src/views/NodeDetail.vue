@@ -385,6 +385,83 @@
         </el-card>
       </div>
 
+      <!-- 告警信息模块 -->
+      <div class="alert-section" v-if="!loading">
+        <el-card>
+          <template #header>
+            <div class="alert-header">
+              <div class="alert-title">
+                <el-icon color="#F56C6C" size="20"><Warning /></el-icon>
+                <span>告警信息</span>
+                <el-tag 
+                  v-if="nodeAlerts.length > 0"
+                  :type="getAlertLevelType(getHighestAlertLevel())" 
+                  effect="dark"
+                  style="margin-left: 12px;"
+                >
+                  {{ nodeAlerts.length }} 条告警
+                </el-tag>
+              </div>
+              <el-button 
+                type="primary" 
+                size="small"
+                @click="refreshNodeAlerts"
+                :loading="alertsLoading"
+              >
+                <el-icon><Refresh /></el-icon>
+                刷新告警
+              </el-button>
+            </div>
+          </template>
+          
+          <div v-if="alertsLoading" class="alert-loading">
+            <el-skeleton :rows="2" animated />
+          </div>
+          
+          <div v-else-if="nodeAlerts.length > 0">
+            <el-table :data="nodeAlerts" style="width: 100%">
+              <el-table-column prop="rule_name" label="规则名称" width="150" />
+              <el-table-column prop="alert_level" label="告警级别" width="100">
+                <template #default="{ row }">
+                  <el-tag 
+                    :type="getAlertLevelType(row.alert_level)" 
+                    effect="dark"
+                    size="small"
+                  >
+                    {{ getAlertLevelText(row.alert_level) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="alert_message" label="告警消息" />
+              <el-table-column prop="current_value" label="当前值" width="80">
+                <template #default="{ row }">
+                  {{ row.current_value?.toFixed(2) || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="threshold_value" label="阈值" width="80">
+                <template #default="{ row }">
+                  {{ row.threshold_value?.toFixed(2) || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="condition_field" label="监控字段" width="120" />
+              <el-table-column prop="condition_operator" label="操作符" width="80" />
+              <el-table-column prop="rule_type" label="规则类型" width="100">
+                <template #default="{ row }">
+                  <el-tag 
+                    :type="row.rule_type === 'global' ? 'success' : 'warning'" 
+                    size="small"
+                  >
+                    {{ row.rule_type === 'global' ? '全局' : '个例' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          
+          <el-empty v-else description="该节点暂无告警信息" />
+        </el-card>
+      </div>
+
       <!-- 空状态 -->
       <el-empty v-if="!loading && metricsData.length === 0" description="暂无数据" />
     </el-card>
@@ -396,10 +473,11 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
-  ArrowLeft, Refresh, Cpu, Coin, Connection, Download, DataBoard, Monitor 
+  ArrowLeft, Refresh, Cpu, Coin, Connection, Download, DataBoard, Monitor, Warning 
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import api from '@/utils/api'
+import { getIpAlerts } from '@/utils/alertApi'
 
 const router = useRouter()
 const route = useRoute()
@@ -408,6 +486,10 @@ const metricsData = ref([])
 const timeRange = ref([])
 const currentPage = ref(1)
 const pageSize = ref(20)
+
+// 告警相关数据
+const nodeAlerts = ref([])
+const alertsLoading = ref(false)
 
 const nodeIp = ref(route.params.ip)
 
@@ -585,6 +667,7 @@ const goBack = () => {
 const handleTimeChange = () => {
   if (timeRange.value && timeRange.value.length === 2) {
     fetchNodeMetrics()
+    fetchNodeAlerts()
   }
 }
 
@@ -700,6 +783,81 @@ const handleCurrentChange = (val) => {
   currentPage.value = val
 }
 
+// 获取告警级别类型
+const getAlertLevelType = (level) => {
+  const levelMap = {
+    'critical': 'danger',
+    'error': 'error',
+    'warning': 'warning',
+    'info': 'info'
+  }
+  return levelMap[level] || 'info'
+}
+
+// 获取告警级别文本
+const getAlertLevelText = (level) => {
+  const levelMap = {
+    'critical': '严重',
+    'error': '错误',
+    'warning': '警告',
+    'info': '信息'
+  }
+  return levelMap[level] || level
+}
+
+// 获取最高告警级别
+const getHighestAlertLevel = () => {
+  if (nodeAlerts.value.length === 0) return 'info'
+  
+  const levelPriority = { 'critical': 4, 'error': 3, 'warning': 2, 'info': 1 }
+  let highestLevel = 'info'
+  let highestPriority = 0
+  
+  nodeAlerts.value.forEach(alert => {
+    const priority = levelPriority[alert.alert_level] || 0
+    if (priority > highestPriority) {
+      highestPriority = priority
+      highestLevel = alert.alert_level
+    }
+  })
+  
+  return highestLevel
+}
+
+// 获取节点告警信息
+const fetchNodeAlerts = async () => {
+  if (!timeRange.value || timeRange.value.length !== 2) {
+    console.warn('时间范围未设置，跳过告警查询')
+    return
+  }
+
+  alertsLoading.value = true
+  try {
+    const startTime = Math.floor(new Date(timeRange.value[0]).getTime() / 1000)
+    const endTime = Math.floor(new Date(timeRange.value[1]).getTime() / 1000)
+
+    const response = await getIpAlerts(nodeIp.value, {
+      start_time: startTime,
+      end_time: endTime
+    })
+    nodeAlerts.value = response.data.alerts || []
+  } catch (error) {
+    console.error('获取节点告警信息失败:', error)
+    if (error.message && error.message.includes('start_time')) {
+      ElMessage.error('请选择时间范围')
+    } else {
+      ElMessage.error('获取节点告警信息失败')
+    }
+  } finally {
+    alertsLoading.value = false
+  }
+}
+
+// 刷新节点告警信息
+const refreshNodeAlerts = () => {
+  fetchNodeAlerts()
+}
+
 // 导出数据
 const exportData = () => {
   const csvContent = [
@@ -753,6 +911,7 @@ onMounted(() => {
   }
   
   fetchNodeMetrics()
+  fetchNodeAlerts()
 })
 </script>
 
@@ -861,6 +1020,31 @@ onMounted(() => {
   color: #303133;
 }
 
+.alert-section {
+  margin-bottom: 20px;
+}
+
+.alert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alert-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #303133;
+}
+
+.alert-title .el-icon {
+  margin-right: 8px;
+}
+
+.alert-loading {
+  padding: 20px 0;
+}
+
 .pagination {
   margin-top: 20px;
   display: flex;
@@ -881,5 +1065,18 @@ onMounted(() => {
   color: #303133;
   font-size: 24px;
   font-weight: 600;
+}
+
+:deep(.el-table) {
+  font-size: 13px;
+}
+
+:deep(.el-table th) {
+  background-color: #fafafa;
+  font-weight: 600;
+}
+
+:deep(.el-table td) {
+  padding: 8px 0;
 }
 </style>
