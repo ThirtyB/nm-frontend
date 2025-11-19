@@ -1,7 +1,19 @@
 <template>
   <div class="dashboard">
-    <!-- 告警信息模块 -->
+    <!-- 欢迎卡片 -->
     <el-row :gutter="20">
+      <el-col :span="24">
+        <el-card class="welcome-card">
+          <div class="welcome-content">
+            <h1>欢迎使用资源监控系统</h1>
+            <p>这是一个用于监控系统资源的管理平台</p>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 告警信息模块 -->
+    <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="24">
         <el-card class="alert-card">
           <template #header>
@@ -115,118 +127,122 @@
         </el-card>
       </el-col>
     </el-row>
-
-    <!-- 欢迎卡片 -->
-    <el-row :gutter="20" style="margin-top: 20px;">
-      <el-col :span="24">
-        <el-card class="welcome-card">
-          <div class="welcome-content">
-            <h1>欢迎使用资源监控系统</h1>
-            <p>这是一个用于监控系统资源的管理平台</p>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
     
-    <el-row :gutter="20" style="margin-top: 20px;">
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon">
-              <el-icon size="40" color="#409EFF"><House /></el-icon>
-            </div>
-            <div class="stat-info">
-              <h3>系统监控</h3>
-              <p>实时监控系统状态</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon">
-              <el-icon size="40" color="#67C23A"><DataAnalysis /></el-icon>
-            </div>
-            <div class="stat-info">
-              <h3>数据分析</h3>
-              <p>查看系统数据分析</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon">
-              <el-icon size="40" color="#E6A23C"><Setting /></el-icon>
-            </div>
-            <div class="stat-info">
-              <h3>系统设置</h3>
-              <p>配置系统参数</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      
-      <el-col :span="6">
-        <el-card class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon">
-              <el-icon size="40" color="#F56C6C"><Warning /></el-icon>
-            </div>
-            <div class="stat-info">
-              <h3>告警管理</h3>
-              <p>配置告警规则</p>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-    </el-row>
-    
+    <!-- 系统评分概览 -->
     <el-row :gutter="20" style="margin-top: 20px;">
       <el-col :span="24">
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>快速操作</span>
+              <div class="header-title">
+                <el-icon color="#409EFF" size="20"><DataAnalysis /></el-icon>
+                <span>系统评分概览</span>
+              </div>
             </div>
           </template>
           
-          <div class="quick-actions">
-            <el-button 
-              v-if="authStore.user?.user_type === 'admin'"
-              type="primary" 
-              @click="$router.push('/users')"
-            >
-              <el-icon><User /></el-icon>
-              用户管理
-            </el-button>
-            
-            <el-button 
-              v-if="authStore.user?.user_type === 'admin'"
-              type="warning" 
-              @click="$router.push('/alert-management')"
-            >
-              <el-icon><Warning /></el-icon>
-              告警配置
-            </el-button>
-            
-            <el-button type="success" @click="$router.push('/nodes')">
-              <el-icon><Monitor /></el-icon>
-              节点监控
-            </el-button>
-            
-            <el-button type="info">
-              <el-icon><Document /></el-icon>
-              查看日志
-            </el-button>
+          <div v-if="scoringLoading">
+            <el-skeleton :rows="3" animated />
           </div>
+          
+          <div v-else-if="machineScores.length > 0">
+            <!-- 雷达图和维度分数 -->
+            <el-row :gutter="24" style="margin-bottom: 24px;">
+              <el-col :span="6">
+                <div class="stats-area">
+                  <div class="stat-item">
+                    <div class="stat-label">平均分</div>
+                    <div class="stat-value">{{ scoringSummary.average_score?.toFixed(1) || '0.0' }}</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-label">机器总数</div>
+                    <div class="stat-value">{{ scoringSummary.total_machines || 0 }}</div>
+                  </div>
+                </div>
+              </el-col>
+              <el-col :span="8">
+                <div class="radar-chart-container">
+                  <canvas ref="radarCanvas"></canvas>
+                </div>
+              </el-col>
+              <el-col :span="10">
+                <div class="dimension-scores-list">
+                  <div v-for="(value, key) in scoringSummary.dimension_averages" :key="key" class="dimension-score-item">
+                    <div class="dimension-info">
+                      <span class="dimension-name">{{ getDimensionName(key) }}</span>
+                      <span class="dimension-score">{{ value?.toFixed(1) || '0.0' }}</span>
+                    </div>
+                    <div class="dimension-bar">
+                      <div class="bar-background">
+                        <div 
+                          class="bar-fill" 
+                          :style="{ width: (value || 0) + '%', backgroundColor: getNewScoreColor(value || 0) }"
+                        ></div>
+                      </div>
+                      <span class="bar-percentage">{{ (value || 0).toFixed(1) }}%</span>
+                    </div>
+                  </div>
+                </div>
+              </el-col>
+            </el-row>
+            
+            <!-- 机器评分卡片列表 -->
+            <div class="machine-scores-container">
+              <div class="machine-scores-scroll">
+                <div v-for="machine in machineScores" :key="machine.ip" class="machine-score-card">
+                  <div class="machine-card-header">
+                    <span class="machine-ip">{{ machine.ip }}</span>
+                    <el-tag 
+                      :type="getScoreTagType(machine.total_score)" 
+                      effect="dark"
+                      size="small"
+                    >
+                      {{ machine.total_score.toFixed(1) }}
+                    </el-tag>
+                  </div>
+                  <div class="machine-dimensions">
+                    <div v-for="(dim, key) in machine.dimensions" :key="key" class="machine-dimension-item">
+                      <span class="dim-label">{{ getDimensionName(key) }}</span>
+                      <div class="dim-score-bar">
+                        <div class="dim-bar-bg">
+                          <div 
+                            class="dim-bar-fill" 
+                            :style="{ width: dim.score + '%', backgroundColor: getNewScoreColor(dim.score) }"
+                          ></div>
+                        </div>
+                        <span class="dim-score-text">{{ dim.score.toFixed(0) }}</span>
+                      </div>
+                      <el-tag 
+                        v-if="dim.alert_count > 0" 
+                        type="danger" 
+                        size="small"
+                        class="dim-alert-tag"
+                      >
+                        {{ dim.alert_count }}
+                      </el-tag>
+                    </div>
+                  </div>
+                  <div class="machine-card-footer">
+                    <span class="eval-time">{{ formatTime(machine.evaluation_time) }}</span>
+                    <el-button 
+                      type="primary" 
+                      size="small"
+                      @click="goToNodeDetail(machine.ip)"
+                    >
+                      <el-icon><View /></el-icon>
+                      详情
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <el-empty v-else description="暂无评分数据" />
         </el-card>
       </el-col>
     </el-row>
+
 
     <!-- 全部告警弹窗 -->
     <el-dialog
@@ -276,11 +292,76 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <!-- 全部评分弹窗 -->
+    <el-dialog
+      v-model="showAllScores"
+      title="全部机器评分"
+      width="90%"
+      top="5vh"
+    >
+      <el-table :data="machineScores" style="width: 100%" max-height="60vh">
+        <el-table-column prop="ip" label="IP地址" width="120" />
+        <el-table-column label="总分" width="100">
+          <template #default="{ row }">
+            <el-tag 
+              :type="getScoreTagType(row.total_score)" 
+              effect="dark"
+              size="small"
+            >
+              {{ row.total_score.toFixed(1) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="各维度评分">
+          <template #default="{ row }">
+            <div class="dimension-scores">
+              <div v-for="(dim, key) in row.dimensions" :key="key" class="dimension-item">
+                <span class="dim-name">{{ getDimensionName(key) }}:</span>
+                <el-progress 
+                  :percentage="dim.score" 
+                  :color="getScoreColor(dim.score)"
+                  :show-text="true"
+                  :format="() => dim.score.toFixed(0)"
+                  :stroke-width="6"
+                  style="width: 80px; margin-left: 4px;"
+                />
+                <el-tag 
+                  v-if="dim.alert_count > 0" 
+                  type="danger" 
+                  size="small"
+                  style="margin-left: 4px;"
+                >
+                  {{ dim.alert_count }}
+                </el-tag>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="evaluation_time" label="评估时间" width="160">
+          <template #default="{ row }">
+            {{ formatTime(row.evaluation_time) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="120">
+          <template #default="{ row }">
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="goToNodeDetail(row.ip)"
+            >
+              <el-icon><View /></el-icon>
+              查看详情
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -288,6 +369,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 import { getAlerts } from '@/utils/alertApi'
+import { getMachineScores, getScoringSummary } from '@/utils/scoringApi'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -304,6 +386,20 @@ const alerts = ref({
 const alertsLoading = ref(false)
 const showAllAlerts = ref(false)
 const alertTimeRange = ref([])
+
+// 评分相关数据
+const machineScores = ref([])
+const scoringSummary = ref({
+  total_machines: 0,
+  average_score: 0,
+  dimension_averages: {}
+})
+const scoringLoading = ref(false)
+const showAllScores = ref(false)
+
+// 雷达图相关
+const radarCanvas = ref(null)
+const resizeTimer = ref(null)
 
 // 告警时间快捷选项
 const alertTimeShortcuts = [
@@ -367,6 +463,50 @@ const getAlertLevelText = (level) => {
   return levelMap[level] || level
 }
 
+// 获取维度名称
+const getDimensionName = (key) => {
+  const nameMap = {
+    'CPU': 'CPU',
+    '内存': '内存',
+    '磁盘': '磁盘',
+    '网络': '网络',
+    'Swap': 'Swap'
+  }
+  return nameMap[key] || key
+}
+
+// 获取评分颜色
+const getScoreColor = (score) => {
+  if (score >= 80) return '#67C23A'
+  if (score >= 60) return '#E6A23C'
+  if (score >= 40) return '#F56C6C'
+  return '#909399'
+}
+
+// 获取新的评分颜色（满分金色，非满分按10分分段，60分以下统一）
+const getNewScoreColor = (score) => {
+  if (score >= 100) return '#FFD700' // 金色
+  if (score >= 90) return '#67C23A'  // 绿色
+  if (score >= 80) return '#95D475'  // 浅绿色
+  if (score >= 70) return '#E6A23C'  // 橙色
+  if (score >= 60) return '#F56C6C'  // 红色
+  return '#909399'  // 灰色（60分以下统一）
+}
+
+// 获取评分标签类型
+const getScoreTagType = (score) => {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  if (score >= 40) return 'danger'
+  return 'info'
+}
+
+// 格式化时间
+const formatTime = (timeStr) => {
+  if (!timeStr) return '-'
+  return new Date(timeStr).toLocaleString('zh-CN')
+}
+
 // 获取告警信息
 const fetchAlerts = async () => {
   if (!alertTimeRange.value || alertTimeRange.value.length !== 2) {
@@ -401,27 +541,335 @@ const fetchAlerts = async () => {
   } finally {
     alertsLoading.value = false
   }
+  
+  // 告警数据获取完成后，获取评分数据
+  fetchScoringData()
 }
 
 // 处理告警时间变化
 const handleAlertTimeChange = () => {
   if (alertTimeRange.value && alertTimeRange.value.length === 2) {
     fetchAlerts()
+    // fetchAlerts会自动调用fetchScoringData
   }
 }
 
 // 刷新告警信息
 const refreshAlerts = () => {
   fetchAlerts()
+  // fetchAlerts会自动调用fetchScoringData
 }
+
+// 获取评分数据
+const fetchScoringData = async () => {
+  scoringLoading.value = true
+  try {
+    // 使用告警时间范围作为评分时间范围
+    if (!alertTimeRange.value || alertTimeRange.value.length !== 2) {
+      ElMessage.warning('请先选择时间范围')
+      scoringLoading.value = false
+      return
+    }
+
+    const startTime = Math.floor(new Date(alertTimeRange.value[0]).getTime() / 1000)
+    const endTime = Math.floor(new Date(alertTimeRange.value[1]).getTime() / 1000)
+
+    // 并行获取机器评分和汇总统计
+    const [scoresResponse, summaryResponse] = await Promise.all([
+      getMachineScores({ 
+        start_time: startTime, 
+        end_time: endTime,
+        include_details: false 
+      }),
+      getScoringSummary({ 
+        start_time: startTime, 
+        end_time: endTime 
+      })
+    ])
+    
+    machineScores.value = scoresResponse.data.scores || []
+    
+    // 处理汇总数据（可能是字符串格式）
+    if (typeof summaryResponse.data === 'string') {
+      try {
+        scoringSummary.value = JSON.parse(summaryResponse.data)
+      } catch (e) {
+        console.warn('评分汇总数据解析失败:', e)
+        scoringSummary.value = {
+          total_machines: machineScores.value.length,
+          average_score: 0,
+          dimension_averages: {}
+        }
+      }
+    } else {
+      scoringSummary.value = summaryResponse.data || {
+        total_machines: machineScores.value.length,
+        average_score: 0,
+        dimension_averages: {}
+      }
+    }
+    
+    // 如果没有汇总数据，根据机器评分计算
+    if (!scoringSummary.value.average_score && machineScores.value.length > 0) {
+      const totalScore = machineScores.value.reduce((sum, machine) => sum + machine.total_score, 0)
+      scoringSummary.value.average_score = totalScore / machineScores.value.length
+      scoringSummary.value.total_machines = machineScores.value.length
+      
+      // 计算各维度平均分
+      const dimensionTotals = {}
+      machineScores.value.forEach(machine => {
+        Object.entries(machine.dimensions).forEach(([key, dim]) => {
+          if (!dimensionTotals[key]) {
+            dimensionTotals[key] = { total: 0, count: 0 }
+          }
+          dimensionTotals[key].total += dim.score
+          dimensionTotals[key].count += 1
+        })
+      })
+      
+      scoringSummary.value.dimension_averages = {}
+      Object.entries(dimensionTotals).forEach(([key, data]) => {
+        scoringSummary.value.dimension_averages[key] = data.total / data.count
+      })
+    }
+    
+    // 绘制雷达图 - 确保DOM完全渲染后再绘制
+    nextTick(() => {
+      setTimeout(() => {
+        drawRadarChart()
+      }, 100) // 延迟100ms确保容器尺寸已确定
+    })
+    
+  } catch (error) {
+    console.error('获取评分数据失败:', error)
+    ElMessage.error('获取评分数据失败')
+  } finally {
+    scoringLoading.value = false
+  }
+}
+
+// 绘制雷达图
+const drawRadarChart = () => {
+  if (!radarCanvas.value) return
+  
+  const canvas = radarCanvas.value
+  const ctx = canvas.getContext('2d')
+  
+  // 检查容器尺寸是否有效
+  const container = canvas.parentElement
+  if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+    console.warn('雷达图容器尺寸无效，延迟重绘')
+    setTimeout(() => drawRadarChart(), 200)
+    return
+  }
+  
+  const containerWidth = container.clientWidth
+  const containerHeight = container.clientHeight
+  const size = Math.min(containerWidth, containerHeight, 350)
+  
+  // 如果尺寸太小，不绘制
+  if (size < 100) {
+    console.warn('雷达图容器尺寸过小，跳过绘制')
+    return
+  }
+  
+  // 设置Canvas的CSS尺寸
+  canvas.style.width = size + 'px'
+  canvas.style.height = size + 'px'
+  
+  // 设置Canvas的实际像素尺寸（支持高清屏）
+  const dpr = window.devicePixelRatio || 1
+  canvas.width = size * dpr
+  canvas.height = size * dpr
+  ctx.scale(dpr, dpr)
+  
+  const centerX = size / 2
+  const centerY = size / 2
+  const radius = (size / 2) - 50
+  
+  // 清空画布
+  ctx.clearRect(0, 0, size, size)
+  
+  // 维度数据
+  const dimensions = ['CPU', '内存', '磁盘', '网络', 'Swap']
+  const dimensionData = dimensions.map(dim => ({
+    name: getDimensionName(dim),
+    value: scoringSummary.value.dimension_averages[dim] || 0
+  }))
+  
+  // 绘制渐变背景
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius)
+  gradient.addColorStop(0, 'rgba(64, 158, 255, 0.05)')
+  gradient.addColorStop(1, 'rgba(64, 158, 255, 0.02)')
+  
+  // 绘制背景网格（更美观的样式）
+  const levels = 5
+  for (let i = 1; i <= levels; i++) {
+    ctx.beginPath()
+    
+    // 渐变网格线
+    const alpha = 0.3 - (i * 0.05)
+    ctx.strokeStyle = `rgba(200, 200, 200, ${alpha})`
+    ctx.lineWidth = i === levels ? 2 : 1
+    
+    for (let j = 0; j < dimensions.length; j++) {
+      const angle = (Math.PI * 2 * j) / dimensions.length - Math.PI / 2
+      const x = centerX + Math.cos(angle) * (radius * i / levels)
+      const y = centerY + Math.sin(angle) * (radius * i / levels)
+      
+      if (j === 0) {
+        ctx.moveTo(x, y)
+      } else {
+        ctx.lineTo(x, y)
+      }
+    }
+    ctx.closePath()
+    ctx.stroke()
+    
+    // 添加网格填充
+    if (i === levels) {
+      ctx.fillStyle = gradient
+      ctx.fill()
+    }
+  }
+  
+  // 绘制轴线（更细腻的样式）
+  dimensions.forEach((dim, index) => {
+    const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2
+    
+    // 绘制轴线
+    ctx.beginPath()
+    ctx.strokeStyle = 'rgba(180, 180, 180, 0.6)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([5, 3]) // 虚线
+    ctx.moveTo(centerX, centerY)
+    ctx.lineTo(
+      centerX + Math.cos(angle) * radius,
+      centerY + Math.sin(angle) * radius
+    )
+    ctx.stroke()
+    ctx.setLineDash([]) // 重置虚线
+    
+    // 绘制刻度点
+    for (let i = 1; i <= 5; i++) {
+      const tickRadius = (radius * i) / 5
+      const tickX = centerX + Math.cos(angle) * tickRadius
+      const tickY = centerY + Math.sin(angle) * tickRadius
+      
+      ctx.beginPath()
+      ctx.fillStyle = 'rgba(150, 150, 150, 0.4)'
+      ctx.arc(tickX, tickY, 2, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    
+    // 绘制标签（更美观的样式）
+    ctx.save()
+    ctx.fillStyle = '#2c3e50'
+    ctx.font = 'bold 13px "Microsoft YaHei", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    
+    const labelDistance = radius + 35
+    const labelX = centerX + Math.cos(angle) * labelDistance
+    const labelY = centerY + Math.sin(angle) * labelDistance
+    
+    // 添加标签背景
+    const textWidth = ctx.measureText(dimensionData[index].name).width
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.fillRect(labelX - textWidth/2 - 6, labelY - 10, textWidth + 12, 20)
+    
+    // 绘制标签文字
+    ctx.fillStyle = '#2c3e50'
+    ctx.fillText(dimensionData[index].name, labelX, labelY)
+    ctx.restore()
+  })
+  
+  // 绘制数据区域（更美观的渐变效果）
+  ctx.beginPath()
+  
+  // 创建渐变填充
+  const dataGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius)
+  dataGradient.addColorStop(0, 'rgba(102, 126, 234, 0.4)')
+  dataGradient.addColorStop(1, 'rgba(102, 126, 234, 0.15)')
+  
+  ctx.fillStyle = dataGradient
+  ctx.strokeStyle = '#667eea'
+  ctx.lineWidth = 3
+  ctx.lineJoin = 'round'
+  ctx.lineCap = 'round'
+  
+  dimensionData.forEach((data, index) => {
+    const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2
+    const distance = (data.value / 100) * radius
+    const x = centerX + Math.cos(angle) * distance
+    const y = centerY + Math.sin(angle) * distance
+    
+    if (index === 0) {
+      ctx.moveTo(x, y)
+    } else {
+      ctx.lineTo(x, y)
+    }
+  })
+  
+  ctx.closePath()
+  ctx.fill()
+  ctx.stroke()
+  
+  // 绘制数据点（更美观的样式）
+  dimensionData.forEach((data, index) => {
+    const angle = (Math.PI * 2 * index) / dimensions.length - Math.PI / 2
+    const distance = (data.value / 100) * radius
+    const x = centerX + Math.cos(angle) * distance
+    const y = centerY + Math.sin(angle) * distance
+    
+    // 外圈
+    ctx.beginPath()
+    ctx.fillStyle = '#667eea'
+    ctx.arc(x, y, 6, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 内圈
+    ctx.beginPath()
+    ctx.fillStyle = '#ffffff'
+    ctx.arc(x, y, 3, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 数值标签
+    ctx.save()
+    ctx.fillStyle = '#667eea'
+    ctx.font = 'bold 11px "Microsoft YaHei", sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'bottom'
+    ctx.fillText(data.value.toFixed(0), x, y - 10)
+    ctx.restore()
+  })
+}
+
+
 
 // 跳转到节点详情
 const goToNodeDetail = (ip) => {
   router.push(`/nodes/${ip}`)
   showAllAlerts.value = false
+  showAllScores.value = false
 }
 
-// 组件挂载时获取告警信息
+// 窗口大小变化处理
+const handleResize = () => {
+  if (machineScores.value.length > 0 && radarCanvas.value) {
+    // 使用防抖避免频繁重绘
+    if (resizeTimer.value) {
+      clearTimeout(resizeTimer.value)
+    }
+    resizeTimer.value = setTimeout(() => {
+      nextTick(() => {
+        drawRadarChart()
+      })
+    }, 150)
+  }
+}
+
+// 组件挂载时获取数据
 onMounted(() => {
   // 设置默认告警时间范围为最近24小时
   const end = new Date()
@@ -432,7 +880,29 @@ onMounted(() => {
     end.toISOString().slice(0, 19).replace('T', ' ')
   ]
   
+  // 并行获取告警和评分数据
   fetchAlerts()
+  // 评分数据会在fetchAlerts完成后通过fetchScoringData获取
+  
+  // 添加窗口大小变化监听
+  window.addEventListener('resize', handleResize)
+})
+
+// 监听评分数据变化，自动重绘雷达图
+watch(() => scoringSummary.value.dimension_averages, () => {
+  nextTick(() => {
+    setTimeout(() => {
+      drawRadarChart()
+    }, 100)
+  })
+}, { deep: true })
+
+// 组件卸载时移除监听
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (resizeTimer.value) {
+    clearTimeout(resizeTimer.value)
+  }
 })
 </script>
 
@@ -540,6 +1010,276 @@ onMounted(() => {
   margin: 0;
   font-size: 14px;
   color: #909399;
+}
+
+/* 评分相关样式 */
+.header-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #303133;
+  flex-wrap: wrap;
+}
+
+.header-title .el-icon {
+  margin-right: 8px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 统计区域样式 */
+.stats-area {
+  height: 400px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  padding: 24px;
+}
+
+.stat-item {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #409EFF;
+  line-height: 1;
+}
+
+/* 雷达图样式 */
+.radar-chart-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  position: relative;
+  overflow: hidden;
+}
+
+.radar-chart-container canvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+/* 维度分数列表样式 */
+.dimension-scores-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  height: 400px;
+}
+
+.dimension-score-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dimension-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dimension-info .dimension-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #303133;
+}
+
+.dimension-info .dimension-score {
+  font-size: 18px;
+  font-weight: 600;
+  color: #409EFF;
+}
+
+.dimension-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-background {
+  flex: 1;
+  height: 8px;
+  background: #e4e7ed;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.bar-percentage {
+  font-size: 12px;
+  color: #909399;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* 机器评分卡片列表样式 */
+.machine-scores-container {
+  margin-top: 20px;
+}
+
+.machine-scores-scroll {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 8px 0;
+  scroll-behavior: smooth;
+}
+
+.machine-scores-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.machine-scores-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.machine-scores-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.machine-scores-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.machine-score-card {
+  min-width: 320px;
+  background: white;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.machine-score-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.machine-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.machine-ip {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.machine-dimensions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.machine-dimension-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dim-label {
+  min-width: 50px;
+  font-size: 12px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.dim-score-bar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dim-bar-bg {
+  flex: 1;
+  height: 6px;
+  background: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.dim-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.dim-score-text {
+  font-size: 12px;
+  color: #303133;
+  font-weight: 500;
+  min-width: 20px;
+}
+
+.dim-alert-tag {
+  font-size: 10px;
+  padding: 0 4px;
+  height: 16px;
+  line-height: 16px;
+}
+
+.machine-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.eval-time {
+  font-size: 11px;
+  color: #909399;
+}
+
+.score-more {
+  margin-top: 12px;
+  text-align: center;
 }
 
 /* 通用样式 */

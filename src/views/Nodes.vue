@@ -84,6 +84,20 @@
             {{ formatNetworkRate(row.network_rate) }}
           </template>
         </el-table-column>
+        <el-table-column label="系统评分" width="120">
+          <template #default="{ row }">
+            <div v-if="scoresMap[row.ip]">
+              <el-tag 
+                :type="getScoreTagType(scoresMap[row.ip].total_score)" 
+                effect="dark"
+                size="small"
+              >
+                {{ scoresMap[row.ip].total_score.toFixed(1) }}
+              </el-tag>
+            </div>
+            <el-tag v-else type="info" size="small">无数据</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
             <el-button 
@@ -106,12 +120,17 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import api from '@/utils/api'
+import { getMachineScores } from '@/utils/scoringApi'
 
 const router = useRouter()
 const loading = ref(false)
 const nodesData = ref([])
 const totalNodes = ref(0)
 const timeRange = ref([])
+
+// 评分相关数据
+const machineScores = ref([])
+const scoresMap = ref({}) // IP到评分的映射
 
 // 时间快捷选项
 const timeShortcuts = [
@@ -214,6 +233,9 @@ const fetchActiveIPs = async () => {
   } finally {
     loading.value = false
   }
+  
+  // 同时获取评分数据
+  fetchScores()
 }
 
 // 查看节点详情
@@ -240,6 +262,43 @@ const handleRowClick = (row) => {
   viewNodeDetail(row.ip)
 }
 
+// 获取评分标签类型
+const getScoreTagType = (score) => {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  if (score >= 40) return 'danger'
+  return 'info'
+}
+
+// 获取评分数据
+const fetchScores = async () => {
+  if (!timeRange.value || timeRange.value.length !== 2) {
+    console.warn('时间范围未设置，跳过获取评分数据')
+    return
+  }
+
+  try {
+    const startTime = Math.floor(new Date(timeRange.value[0]).getTime() / 1000)
+    const endTime = Math.floor(new Date(timeRange.value[1]).getTime() / 1000)
+
+    const response = await getMachineScores({ 
+      start_time: startTime, 
+      end_time: endTime,
+      include_details: false 
+    })
+    machineScores.value = response.data.scores || []
+    
+    // 创建IP到评分的映射
+    const newScoresMap = {}
+    machineScores.value.forEach(score => {
+      newScoresMap[score.ip] = score
+    })
+    scoresMap.value = newScoresMap
+  } catch (error) {
+    console.error('获取评分数据失败:', error)
+  }
+}
+
 // 初始化时间范围（默认最近24小时）
 onMounted(() => {
   const end = new Date()
@@ -250,6 +309,7 @@ onMounted(() => {
     end.toISOString().slice(0, 19).replace('T', ' ')
   ]
   fetchActiveIPs()
+  // fetchScores会在fetchActiveIPs完成后自动调用
 })
 </script>
 

@@ -38,6 +38,64 @@
         </div>
       </template>
 
+      <!-- 系统评分展示 -->
+      <div class="score-overview" v-if="nodeScore.total_score > 0">
+        <el-card class="score-card">
+          <template #header>
+            <div class="score-header">
+              <div class="score-title">
+                <el-icon color="#409EFF" size="20"><DataAnalysis /></el-icon>
+                <span>系统评分</span>
+                <el-tag 
+                  :type="getScoreTagType(nodeScore.total_score)" 
+                  effect="dark"
+                  size="large"
+                  style="margin-left: 12px;"
+                >
+                  总分: {{ nodeScore.total_score.toFixed(1) }}
+                </el-tag>
+              </div>
+              <div class="score-controls">
+                <el-button 
+                  type="primary" 
+                  size="small"
+                  @click="refreshScore"
+                  :loading="scoreLoading"
+                >
+                  <el-icon><Refresh /></el-icon>
+                  刷新评分
+                </el-button>
+              </div>
+            </div>
+          </template>
+          
+          <div class="score-content">
+            <el-row :gutter="16">
+              <el-col :span="4" v-for="(dim, key) in nodeScore.dimensions" :key="key">
+                <div class="dimension-score-item">
+                  <div class="dimension-name">{{ getDimensionName(key) }}</div>
+                  <div class="dimension-score-value">{{ dim.score.toFixed(0) }}</div>
+                  <el-progress 
+                    :percentage="dim.score" 
+                    :color="getScoreColor(dim.score)"
+                    :show-text="false"
+                    :stroke-width="8"
+                  />
+                  <div v-if="dim.alert_count > 0" class="dimension-alerts">
+                    <el-tag type="danger" size="small">
+                      {{ dim.alert_count }} 个告警
+                    </el-tag>
+                  </div>
+                </div>
+              </el-col>
+            </el-row>
+            <div class="score-time">
+              <small>评估时间: {{ formatTime(nodeScore.evaluation_time) }}</small>
+            </div>
+          </div>
+        </el-card>
+      </div>
+
       <!-- 五维数据展示 -->
       <div class="five-dimension-overview" v-if="!loading && metricsData.length > 0">
         <el-row :gutter="20">
@@ -473,11 +531,12 @@ import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
-  ArrowLeft, Refresh, Cpu, Coin, Connection, Download, DataBoard, Monitor, Warning 
+  ArrowLeft, Refresh, Cpu, Coin, Connection, Download, DataBoard, Monitor, Warning, DataAnalysis 
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import api from '@/utils/api'
 import { getIpAlerts } from '@/utils/alertApi'
+import { getMachineScore } from '@/utils/scoringApi'
 
 const router = useRouter()
 const route = useRoute()
@@ -490,6 +549,15 @@ const pageSize = ref(20)
 // 告警相关数据
 const nodeAlerts = ref([])
 const alertsLoading = ref(false)
+
+// 评分相关数据
+const nodeScore = ref({
+  ip: '',
+  total_score: 0,
+  dimensions: {},
+  evaluation_time: null
+})
+const scoreLoading = ref(false)
 
 const nodeIp = ref(route.params.ip)
 
@@ -668,6 +736,7 @@ const handleTimeChange = () => {
   if (timeRange.value && timeRange.value.length === 2) {
     fetchNodeMetrics()
     fetchNodeAlerts()
+    // fetchNodeMetrics会自动调用fetchNodeScore
   }
 }
 
@@ -707,6 +776,9 @@ const fetchNodeMetrics = async () => {
   } finally {
     loading.value = false
   }
+  
+  // 节点数据获取完成后，获取评分数据
+  fetchNodeScore()
 }
 
 // 渲染图表
@@ -889,6 +961,79 @@ const exportData = () => {
   ElMessage.success('数据导出成功')
 }
 
+// 获取维度名称
+const getDimensionName = (key) => {
+  const nameMap = {
+    'CPU': 'CPU',
+    '内存': '内存',
+    '磁盘': '磁盘',
+    '网络': '网络',
+    'Swap': 'Swap'
+  }
+  return nameMap[key] || key
+}
+
+// 获取评分颜色
+const getScoreColor = (score) => {
+  if (score >= 80) return '#67C23A'
+  if (score >= 60) return '#E6A23C'
+  if (score >= 40) return '#F56C6C'
+  return '#909399'
+}
+
+// 获取评分标签类型
+const getScoreTagType = (score) => {
+  if (score >= 80) return 'success'
+  if (score >= 60) return 'warning'
+  if (score >= 40) return 'danger'
+  return 'info'
+}
+
+// 格式化时间
+const formatTime = (timeStr) => {
+  if (!timeStr) return '-'
+  return new Date(timeStr).toLocaleString('zh-CN')
+}
+
+// 获取节点评分
+const fetchNodeScore = async () => {
+  scoreLoading.value = true
+  try {
+    // 使用节点详情页的时间范围
+    if (!timeRange.value || timeRange.value.length !== 2) {
+      ElMessage.warning('请先选择时间范围')
+      scoreLoading.value = false
+      return
+    }
+
+    const startTime = Math.floor(new Date(timeRange.value[0]).getTime() / 1000)
+    const endTime = Math.floor(new Date(timeRange.value[1]).getTime() / 1000)
+
+    const response = await getMachineScore(nodeIp.value, { 
+      start_time: startTime, 
+      end_time: endTime,
+      include_details: true 
+    })
+    nodeScore.value = response.data
+  } catch (error) {
+    console.error('获取节点评分失败:', error)
+    if (error.response?.status !== 404) {
+      ElMessage.error('获取节点评分失败')
+    }
+  } finally {
+    scoreLoading.value = false
+  }
+}
+
+// 刷新评分
+const refreshScore = () => {
+  if (timeRange.value && timeRange.value.length === 2) {
+    fetchNodeScore()
+  } else {
+    ElMessage.warning('请先选择时间范围')
+  }
+}
+
 // 初始化
 onMounted(() => {
   // 从查询参数获取时间范围
@@ -912,6 +1057,7 @@ onMounted(() => {
   
   fetchNodeMetrics()
   fetchNodeAlerts()
+  // fetchNodeScore会在fetchNodeMetrics完成后自动调用
 })
 </script>
 
@@ -937,6 +1083,75 @@ onMounted(() => {
 .time-selector {
   display: flex;
   align-items: center;
+}
+
+/* 评分相关样式 */
+.score-overview {
+  margin-bottom: 20px;
+}
+
+.score-card {
+  border: 1px solid #409EFF;
+  box-shadow: 0 2px 12px rgba(64, 158, 255, 0.1);
+}
+
+.score-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.score-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  color: #303133;
+}
+
+.score-title .el-icon {
+  margin-right: 8px;
+}
+
+.score-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-content {
+  padding: 16px 0;
+}
+
+.dimension-score-item {
+  text-align: center;
+  padding: 16px;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  background-color: #fafafa;
+}
+
+.dimension-name {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.dimension-score-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 12px;
+}
+
+.dimension-alerts {
+  margin-top: 8px;
+}
+
+.score-time {
+  text-align: center;
+  margin-top: 16px;
+  color: #909399;
 }
 
 .five-dimension-overview {
