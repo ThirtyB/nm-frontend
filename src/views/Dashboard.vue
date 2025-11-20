@@ -243,6 +243,53 @@
       </el-col>
     </el-row>
 
+    <!-- 五维使用率TOP折线图 -->
+    <el-row :gutter="20" style="margin-top: 20px;">
+      <el-col :span="24">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <div class="header-title">
+                <el-icon color="#67C23C" size="20"><DataAnalysis /></el-icon>
+                <span>五维使用率TOP趋势图</span>
+              </div>
+              <div class="usage-top-controls">
+                <span style="margin-right: 8px; color: #606266;">TOP数量：</span>
+                <el-input-number 
+                  v-model="topCount" 
+                  :min="1" 
+                  :max="20" 
+                  :step="1"
+                  size="small"
+                  style="width: 120px; margin-right: 12px;"
+                  @change="refreshUsageTop"
+                />
+              </div>
+            </div>
+          </template>
+          
+          <div v-if="usageTopLoading">
+            <el-skeleton :rows="3" animated />
+          </div>
+          
+          <div v-else-if="usageTopData && Object.keys(usageTopData).length > 0" class="usage-top-charts">
+            <el-row :gutter="20">
+              <el-col :span="12" v-for="(dimension, index) in usageTopData" :key="dimension.name">
+                <div class="chart-card">
+                  <div class="chart-header">
+                    <h3>{{ dimension.name }}使用率TOP{{ topCount }}</h3>
+                    <el-tag type="info" size="small">{{ dimension.unit }}</el-tag>
+                  </div>
+                  <div :ref="(el) => { usageTopChartRefs[index] = el; console.log(`设置图表${index}的引用:`, el); }" class="usage-top-chart"></div>
+                </div>
+              </el-col>
+            </el-row>
+          </div>
+          
+          <el-empty v-else description="暂无使用率数据" />
+        </el-card>
+      </el-col>
+    </el-row>
 
     <!-- 全部告警弹窗 -->
     <el-dialog
@@ -367,9 +414,11 @@ import { ElMessage } from 'element-plus'
 import { 
   House, DataAnalysis, Setting, User, Refresh, Document, Warning, Monitor, View 
 } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 import { useAuthStore } from '@/stores/auth'
 import { getAlerts } from '@/utils/alertApi'
 import { getMachineScores, getScoringSummary } from '@/utils/scoringApi'
+import { getUsageTop } from '@/utils/usageTopApi'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -400,6 +449,12 @@ const showAllScores = ref(false)
 // 雷达图相关
 const radarCanvas = ref(null)
 const resizeTimer = ref(null)
+
+// 使用率TOP相关数据
+const usageTopData = ref([])
+const usageTopLoading = ref(false)
+const topCount = ref(10)
+const usageTopChartRefs = ref([])
 
 // 告警时间快捷选项
 const alertTimeShortcuts = [
@@ -646,6 +701,9 @@ const fetchScoringData = async () => {
   } finally {
     scoringLoading.value = false
   }
+  
+  // 评分数据获取完成后，获取使用率TOP数据
+  fetchUsageTopData()
 }
 
 // 绘制雷达图
@@ -847,6 +905,299 @@ const drawRadarChart = () => {
 
 
 
+// 获取使用率TOP数据
+const fetchUsageTopData = async () => {
+  if (!alertTimeRange.value || alertTimeRange.value.length !== 2) {
+    ElMessage.warning('请先选择时间范围')
+    return
+  }
+
+  usageTopLoading.value = true
+  try {
+    const startTime = Math.floor(new Date(alertTimeRange.value[0]).getTime() / 1000)
+    const endTime = Math.floor(new Date(alertTimeRange.value[1]).getTime() / 1000)
+
+    const response = await getUsageTop({
+      start_time: startTime,
+      end_time: endTime,
+      top_count: topCount.value,
+      dimensions: ["CPU", "内存", "磁盘", "网络", "Swap"]
+    })
+
+    console.log('使用率TOP数据:', response.data)
+    
+    // 处理数据，转换为数组格式便于遍历
+    const dimensions = response.data.dimensions || {}
+    usageTopData.value = Object.keys(dimensions).map(key => ({
+      name: dimensions[key].name,
+      unit: dimensions[key].unit,
+      top_items: dimensions[key].top_items || []
+    }))
+
+    // 初始化图表引用数组
+    usageTopChartRefs.value = new Array(usageTopData.value.length).fill(null)
+    console.log('初始化图表引用数组，长度:', usageTopData.value.length)
+
+    // 确保DOM渲染完成后再绘制图表
+    nextTick(() => {
+      setTimeout(() => {
+        console.log('开始绘制图表，数据:', usageTopData.value)
+        drawUsageTopCharts()
+      }, 200) // 增加延迟时间确保DOM完全渲染
+    })
+
+  } catch (error) {
+    console.error('获取使用率TOP数据失败:', error)
+    ElMessage.error('获取使用率TOP数据失败')
+  } finally {
+    usageTopLoading.value = false
+  }
+}
+
+// 刷新使用率TOP数据
+const refreshUsageTop = () => {
+  fetchUsageTopData()
+}
+
+// 绘制使用率TOP折线图
+const drawUsageTopCharts = () => {
+  console.log('开始绘制图表，数据:', usageTopData.value)
+  console.log('图表引用数组:', usageTopChartRefs.value)
+  
+  // 确保图表引用数组长度正确
+  if (usageTopChartRefs.value.length !== usageTopData.value.length) {
+    usageTopChartRefs.value = new Array(usageTopData.value.length).fill(null)
+  }
+
+  usageTopData.value.forEach((dimension, dimIndex) => {
+    console.log(`绘制第${dimIndex}个维度图表:`, dimension.name)
+    
+    // 使用更长的延迟确保DOM元素已渲染
+    setTimeout(() => {
+      const chartRef = usageTopChartRefs.value[dimIndex]
+      console.log(`图表${dimIndex}的DOM元素:`, chartRef)
+      
+      if (!chartRef) {
+        console.warn(`图表${dimIndex}的DOM元素不存在，尝试重新获取`)
+        // 尝试重新获取DOM元素
+        setTimeout(() => {
+          drawSingleChart(dimension, dimIndex)
+        }, 500)
+        return
+      }
+
+      drawSingleChart(dimension, dimIndex)
+    }, dimIndex * 200) // 增加延迟时间
+  })
+}
+
+// 绘制单个图表的函数
+const drawSingleChart = (dimension, dimIndex) => {
+  const chartRef = usageTopChartRefs.value[dimIndex]
+  
+  if (!chartRef) {
+    console.error(`图表${dimIndex}的DOM元素仍然不存在`)
+    return
+  }
+
+  // 如果图表已存在，先销毁
+  let chart = echarts.getInstanceByDom(chartRef)
+  if (chart) {
+    chart.dispose()
+  }
+
+  chart = echarts.init(chartRef)
+
+  // 准备数据
+  const ipColors = [
+    '#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de',
+    '#3ba272', '#fc8452', '#9a60b4', '#ea7ccc', '#4d6fff',
+    '#ff9f7f', '#37c6ab', '#c4ebad', '#96dee8', '#ffa75f'
+  ]
+
+  // 收集所有时间点，用于统一对齐
+  const allMinuteTimestamps = new Set()
+  
+  // 为每个IP生成时间序列数据，并将时间戳转换为整数分钟
+  const processedData = dimension.top_items.map((item, itemIndex) => {
+    const color = ipColors[itemIndex % ipColors.length]
+    
+    // 将时间戳转换为整数分钟，并按分钟分组取平均值
+    const minuteData = new Map()
+    
+    item.time_series.forEach(point => {
+      // 将时间戳转换为整数分钟（去掉秒数）
+      const minuteTimestamp = Math.floor(point.timestamp / 60) * 60
+      const usageRate = point.usage_rate
+      
+      if (!minuteData.has(minuteTimestamp)) {
+        minuteData.set(minuteTimestamp, {
+          sum: 0,
+          count: 0,
+          values: []
+        })
+      }
+      
+      const minuteInfo = minuteData.get(minuteTimestamp)
+      minuteInfo.sum += usageRate
+      minuteInfo.count += 1
+      minuteInfo.values.push(usageRate)
+    })
+    
+    // 计算每分钟的平均值，并收集所有时间点
+    const averagedData = []
+    minuteData.forEach((info, timestamp) => {
+      allMinuteTimestamps.add(timestamp)
+      averagedData.push({
+        timestamp: timestamp * 1000, // 转换为毫秒
+        usageRate: info.sum / info.count // 使用平均值
+      })
+    })
+    
+    // 按时间排序
+    averagedData.sort((a, b) => a.timestamp - b.timestamp)
+    
+    console.log(`IP ${item.ip} 原始数据点: ${item.time_series.length}, 聚合后数据点: ${averagedData.length}`)
+
+    return {
+      name: item.ip,
+      color: color,
+      data: averagedData
+    }
+  })
+
+  // 将所有时间点排序，用于对齐所有IP的数据
+  const sortedTimestamps = Array.from(allMinuteTimestamps).sort((a, b) => a - b)
+  
+  // 为每个IP生成对齐后的时间序列数据
+  const series = processedData.map(item => {
+    const dataMap = new Map(item.data.map(d => [d.timestamp, d.usageRate]))
+    
+    const alignedData = sortedTimestamps.map(timestamp => {
+      const timeInMs = timestamp * 1000
+      const usageRate = dataMap.get(timeInMs)
+      
+      return {
+        value: [
+          timeInMs,
+          usageRate !== undefined ? usageRate : null
+        ]
+      }
+    })
+
+    return {
+      name: item.name,
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: {
+        width: 2
+      },
+      itemStyle: {
+        color: item.color
+      },
+      areaStyle: {
+        opacity: 0.1
+      },
+      data: alignedData,
+      connectNulls: true // 连接空值，避免断线
+    }
+  })
+
+  // 计算时间范围
+  const minTime = sortedTimestamps.length > 0 ? sortedTimestamps[0] * 1000 : null
+  const maxTime = sortedTimestamps.length > 0 ? sortedTimestamps[sortedTimestamps.length - 1] * 1000 : null
+
+  const option = {
+    title: {
+      text: '',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: function(params) {
+        if (!params || params.length === 0) return ''
+        
+        const timestamp = params[0].value[0]
+        const time = new Date(timestamp).toLocaleString('zh-CN')
+        let result = `<div style="margin-bottom: 8px; font-weight: bold;">${time}</div>`
+        
+        params.forEach(param => {
+          if (param.value[1] !== null && param.value[1] !== undefined) {
+            result += `
+              <div style="display: flex; align-items: center; margin-bottom: 4px;">
+                <span style="display: inline-block; width: 10px; height: 2px; background: ${param.color}; margin-right: 8px;"></span>
+                <span style="margin-right: 8px;">${param.seriesName}:</span>
+                <span style="font-weight: bold;">${param.value[1].toFixed(2)}${dimension.unit}</span>
+              </div>
+            `
+          }
+        })
+        
+        return result
+      }
+    },
+    legend: {
+      data: dimension.top_items.map(item => item.ip),
+      top: 30,
+      type: 'scroll',
+      pageIconSize: 12,
+      pageTextStyle: {
+        color: '#333'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '15%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'time',
+      boundaryGap: false,
+      min: minTime,
+      max: maxTime,
+      axisLabel: {
+        formatter: function(value) {
+          return new Date(value).toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: dimension.unit,
+      axisLabel: {
+        formatter: function(value) {
+          return value.toFixed(1)
+        }
+      }
+    },
+    series: series,
+    animation: true,
+    animationDuration: 1000,
+    animationEasing: 'cubicOut'
+  }
+
+  console.log(`设置图表${dimIndex}的配置，数据系列数量:`, series.length)
+  chart.setOption(option)
+
+  // 监听窗口大小变化
+  const resizeHandler = () => {
+    chart?.resize()
+  }
+  window.addEventListener('resize', resizeHandler)
+  
+  // 保存resize处理器引用，便于清理
+  chart._resizeHandler = resizeHandler
+  
+  console.log(`图表${dimIndex}绘制完成`)
+}
+
 // 跳转到节点详情
 const goToNodeDetail = (ip) => {
   router.push(`/nodes/${ip}`)
@@ -871,18 +1222,31 @@ const handleResize = () => {
 
 // 组件挂载时获取数据
 onMounted(() => {
-  // 设置默认告警时间范围为最近24小时
+  // 设置默认告警时间范围为最近1小时
   const end = new Date()
   const start = new Date()
-  start.setTime(start.getTime() - 3600 * 1000 * 24)
+  start.setTime(start.getTime() - 3600 * 1000 * 1)
+  
+  // 使用本地时间格式，避免UTC时间转换问题
+  const formatLocalTime = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  }
+  
   alertTimeRange.value = [
-    start.toISOString().slice(0, 19).replace('T', ' '),
-    end.toISOString().slice(0, 19).replace('T', ' ')
+    formatLocalTime(start),
+    formatLocalTime(end)
   ]
   
-  // 并行获取告警和评分数据
+  // 并行获取告警、评分和使用率TOP数据
   fetchAlerts()
   // 评分数据会在fetchAlerts完成后通过fetchScoringData获取
+  // 使用率TOP数据会在fetchAlerts完成后通过fetchUsageTopData获取
   
   // 添加窗口大小变化监听
   window.addEventListener('resize', handleResize)
@@ -903,6 +1267,20 @@ onUnmounted(() => {
   if (resizeTimer.value) {
     clearTimeout(resizeTimer.value)
   }
+  
+  // 清理使用率TOP图表
+  usageTopChartRefs.value.forEach(chartRef => {
+    if (chartRef) {
+      const chart = echarts.getInstanceByDom(chartRef)
+      if (chart) {
+        if (chart._resizeHandler) {
+          window.removeEventListener('resize', chart._resizeHandler)
+        }
+        chart.dispose()
+      }
+    }
+  })
+  usageTopChartRefs.value = []
 })
 </script>
 
@@ -1312,5 +1690,53 @@ onUnmounted(() => {
 
 :deep(.el-table td) {
   padding: 8px 0;
+}
+
+/* 使用率TOP图表样式 */
+.usage-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-top-charts {
+  margin-top: 16px;
+}
+
+.chart-card {
+  background: #fff;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.3s ease;
+}
+
+.chart-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.usage-top-chart {
+  width: 100%;
+  height: 300px;
+  background: #fafafa;
+  border-radius: 6px;
+  padding: 8px;
 }
 </style>
