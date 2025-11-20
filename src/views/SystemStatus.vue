@@ -34,13 +34,36 @@
     </div>
 
     <div class="status-legend">
-      <div class="legend-item">
-        <div class="legend-icon online"></div>
-        <span>在线服务</span>
+      <div class="legend-flow">
+        <div class="legend-item">
+          <div class="legend-icon data-collection"></div>
+          <span>数据采集</span>
+        </div>
+        <div class="legend-arrow">→</div>
+        <div class="legend-item">
+          <div class="legend-icon kafka"></div>
+          <span>Kafka</span>
+        </div>
+        <div class="legend-arrow">→</div>
+        <div class="legend-item">
+          <div class="legend-icon backend"></div>
+          <span>后端</span>
+        </div>
+        <div class="legend-arrow">→</div>
+        <div class="legend-item">
+          <div class="legend-icon frontend"></div>
+          <span>前端</span>
+        </div>
       </div>
-      <div class="legend-item">
-        <div class="legend-icon offline"></div>
-        <span>离线服务</span>
+      <div class="legend-status">
+        <div class="legend-item">
+          <div class="legend-icon online"></div>
+          <span>在线</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-icon offline"></div>
+          <span>离线</span>
+        </div>
       </div>
     </div>
   </div>
@@ -134,10 +157,16 @@ const fetchSystemStatus = async () => {
       ]
     }
 
-    const response = await api.post('/heartbeat/status', {
-      start_time: startTime.toISOString(),
-      end_time: endTime.toISOString()
-    })
+    const requestData = {
+      start_time: Math.floor(startTime.getTime() / 1000),
+      end_time: Math.floor(endTime.getTime() / 1000)
+    }
+    
+    console.log('发送的请求数据:', requestData)
+    console.log('startTime:', startTime, '时间戳:', requestData.start_time)
+    console.log('endTime:', endTime, '时间戳:', requestData.end_time)
+    
+    const response = await api.post('/heartbeat/status', requestData)
 
     console.log('系统状态数据:', response.data)
     serviceData.value = response.data
@@ -228,94 +257,124 @@ const updateChart = () => {
     })
   }
 
-  // 创建节点数据
+  // 创建桑基图节点和连接
   const nodes = []
   const links = []
 
-  // 数据收集器节点
+  // 数据采集层节点
   dataCollectors.forEach((collector, index) => {
     nodes.push({
-      id: `collector_${index}`,
       name: collector.name,
-      category: 0,
-      online: collector.online,
-      symbolSize: 60,
-      x: 100 + (index % 3) * 150,
-      y: 100 + Math.floor(index / 3) * 100
+      value: collector.online ? 10 : 5,
+      itemStyle: {
+        color: collector.online ? '#409EFF' : '#CCCCCC'
+      },
+      tooltip: {
+        formatter: `${collector.name}<br/>状态: ${collector.online ? '在线' : '离线'}<br/>IP: ${collector.ip}`
+      }
     })
   })
 
-  // Kafka节点
+  // Kafka层节点
   kafkaServices.forEach((kafka, index) => {
     nodes.push({
-      id: `kafka_${index}`,
       name: kafka.name,
-      category: 1,
-      online: kafka.online,
-      symbolSize: 80,
-      x: 400,
-      y: 200 + index * 150
-    })
-
-    // 数据收集器连接到Kafka
-    dataCollectors.forEach((_, collectorIndex) => {
-      links.push({
-        source: `collector_${collectorIndex}`,
-        target: `kafka_${index}`,
-        lineStyle: {
-          color: kafka.online ? '#67C23A' : '#F56C6C',
-          width: 2
-        }
-      })
+      value: kafka.online ? 15 : 8,
+      itemStyle: {
+        color: kafka.online ? '#E6A23C' : '#CCCCCC'
+      },
+      tooltip: {
+        formatter: `${kafka.name}<br/>状态: ${kafka.online ? '在线' : '离线'}<br/>IP: ${kafka.ip}`
+      }
     })
   })
 
-  // 后端节点
+  // 后端层节点
   backendServices.forEach((backend, index) => {
     nodes.push({
-      id: `backend_${index}`,
       name: backend.name,
-      category: 2,
-      online: backend.online,
-      symbolSize: 60,
-      x: 700 + (index % 3) * 150,
-      y: 100 + Math.floor(index / 3) * 100
+      value: backend.online ? 12 : 6,
+      itemStyle: {
+        color: backend.online ? '#67C23A' : '#CCCCCC'
+      },
+      tooltip: {
+        formatter: `${backend.name}<br/>状态: ${backend.online ? '在线' : '离线'}<br/>IP: ${backend.ip}`
+      }
     })
+  })
 
-    // Kafka连接到后端
-    kafkaServices.forEach((_, kafkaIndex) => {
+  // 前端层节点
+  frontendServices.forEach((frontend, index) => {
+    nodes.push({
+      name: frontend.name,
+      value: frontend.online ? 12 : 6,
+      itemStyle: {
+        color: frontend.online ? '#F56C6C' : '#CCCCCC'
+      },
+      tooltip: {
+        formatter: `${frontend.name}<br/>状态: ${frontend.online ? '在线' : '离线'}<br/>IP: ${frontend.ip}`
+      }
+    })
+  })
+
+  // 创建连接：数据采集 -> Kafka
+  const kafkaStartIndex = dataCollectors.length
+  
+  dataCollectors.forEach((collector, collectorIndex) => {
+    kafkaServices.forEach((kafka, kafkaIndex) => {
+      const sourceIndex = collectorIndex
+      const targetIndex = kafkaStartIndex + kafkaIndex
+      const value = (collector.online && kafka.online) ? 8 : 2
+      
       links.push({
-        source: `kafka_${kafkaIndex}`,
-        target: `backend_${index}`,
+        source: sourceIndex,
+        target: targetIndex,
+        value: value,
         lineStyle: {
-          color: backend.online ? '#67C23A' : '#F56C6C',
-          width: 2
+          color: (collector.online && kafka.online) ? '#67C23A' : '#CCCCCC',
+          opacity: (collector.online && kafka.online) ? 0.8 : 0.3
         }
       })
     })
   })
 
-  // 前端节点
-  frontendServices.forEach((frontend, index) => {
-    nodes.push({
-      id: `frontend_${index}`,
-      name: frontend.name,
-      category: 3,
-      online: frontend.online,
-      symbolSize: 60,
-      x: 700 + (index % 3) * 150,
-      y: 300 + Math.floor(index / 3) * 100
-    })
-
-    // 后端与前端全连接
-    backendServices.forEach((_, backendIndex) => {
+  // 创建连接：Kafka -> 后端
+  const backendStartIndex = kafkaStartIndex + kafkaServices.length
+  
+  kafkaServices.forEach((kafka, kafkaIndex) => {
+    backendServices.forEach((backend, backendIndex) => {
+      const sourceIndex = kafkaStartIndex + kafkaIndex
+      const targetIndex = backendStartIndex + backendIndex
+      const value = (kafka.online && backend.online) ? 6 : 1
+      
       links.push({
-        source: `backend_${backendIndex}`,
-        target: `frontend_${index}`,
+        source: sourceIndex,
+        target: targetIndex,
+        value: value,
         lineStyle: {
-          color: (frontend.online && backendServices[backendIndex].online) ? '#67C23A' : '#F56C6C',
-          width: 1,
-          type: 'dashed'
+          color: (kafka.online && backend.online) ? '#67C23A' : '#CCCCCC',
+          opacity: (kafka.online && backend.online) ? 0.8 : 0.3
+        }
+      })
+    })
+  })
+
+  // 创建连接：后端 -> 前端
+  const frontendStartIndex = backendStartIndex + backendServices.length
+  
+  backendServices.forEach((backend, backendIndex) => {
+    frontendServices.forEach((frontend, frontendIndex) => {
+      const sourceIndex = backendStartIndex + backendIndex
+      const targetIndex = frontendStartIndex + frontendIndex
+      const value = (backend.online && frontend.online) ? 4 : 0.5
+      
+      links.push({
+        source: sourceIndex,
+        target: targetIndex,
+        value: value,
+        lineStyle: {
+          color: (backend.online && frontend.online) ? '#67C23A' : '#CCCCCC',
+          opacity: (backend.online && frontend.online) ? 0.8 : 0.3
         }
       })
     })
@@ -323,7 +382,7 @@ const updateChart = () => {
 
   const option = {
     title: {
-      text: '系统架构存活状态图',
+      text: '系统架构存活状态桑基图',
       left: 'center',
       top: 20,
       textStyle: {
@@ -334,82 +393,68 @@ const updateChart = () => {
     },
     tooltip: {
       trigger: 'item',
-      formatter: function(params) {
-        if (params.dataType === 'node') {
-          const data = params.data
-          return `
-            <div style="padding: 10px;">
-              <div style="font-weight: bold; margin-bottom: 5px;">${data.name}</div>
-              <div style="color: ${data.online ? '#67C23A' : '#F56C6C'}">
-                状态: ${data.online ? '在线' : '离线'}
-              </div>
-              <div style="font-size: 12px; color: #666;">
-                IP: ${data.ip || 'N/A'}
-              </div>
-            </div>
-          `
-        }
-        return ''
-      }
+      triggerOn: 'mousemove'
     },
-    legend: {
-      data: ['数据采集', 'Kafka', '后端服务', '前端服务'],
-      top: 50,
-      textStyle: {
-        fontSize: 14
-      }
-    },
-    series: [{
-      type: 'graph',
-      layout: 'none',
-      symbolSize: 60,
-      roam: true,
-      label: {
-        show: true,
-        position: 'bottom',
-        fontSize: 12,
-        formatter: function(params) {
-          return params.data.name.length > 8 ? 
-            params.data.name.substring(0, 8) + '...' : 
-            params.data.name
-        }
-      },
-      edgeSymbol: ['circle', 'arrow'],
-      edgeSymbolSize: [4, 10],
-      edgeLabel: {
-        fontSize: 12
-      },
-      data: nodes,
-      links: links,
-      categories: [
-        { name: '数据采集', itemStyle: { color: '#409EFF' } },
-        { name: 'Kafka', itemStyle: { color: '#E6A23C' } },
-        { name: '后端服务', itemStyle: { color: '#67C23A' } },
-        { name: '前端服务', itemStyle: { color: '#F56C6C' } }
-      ],
-      lineStyle: {
-        opacity: 0.8,
-        curveness: 0.2
-      },
-      emphasis: {
-        focus: 'adjacency',
+    series: [
+      {
+        type: 'sankey',
+        data: nodes,
+        links: links,
+        emphasis: {
+          focus: 'adjacency'
+        },
+        levels: [{
+          depth: 0,
+          itemStyle: {
+            color: '#409EFF'
+          },
+          lineStyle: {
+            color: 'source',
+            opacity: 0.6
+          }
+        }, {
+          depth: 1,
+          itemStyle: {
+            color: '#E6A23C'
+          },
+          lineStyle: {
+            color: 'source',
+            opacity: 0.6
+          }
+        }, {
+          depth: 2,
+          itemStyle: {
+            color: '#67C23A'
+          },
+          lineStyle: {
+            color: 'source',
+            opacity: 0.6
+          }
+        }, {
+          depth: 3,
+          itemStyle: {
+            color: '#F56C6C'
+          },
+          lineStyle: {
+            color: 'source',
+            opacity: 0.6
+          }
+        }],
         lineStyle: {
-          width: 4
-        }
+          curveness: 0.5
+        },
+        label: {
+          position: 'right',
+          fontSize: 12
+        },
+        left: '10%',
+        right: '20%',
+        nodeWidth: 20,
+        nodeGap: 8,
+        layoutIterations: 32
       }
-    }]
+    ]
   }
-
-  // 设置节点样式
-  option.series[0].data.forEach(node => {
-    node.itemStyle = {
-      color: node.online ? 
-        option.series[0].categories[node.category].itemStyle.color : 
-        '#CCCCCC',
-      borderColor: node.online ? '#ffffff' : '#999999',
-      borderWidth: 2
-    }
-  })
 
   chart.value.setOption(option, true)
 }
@@ -497,12 +542,25 @@ onMounted(async () => {
 }
 
 .status-legend {
-  display: flex;
-  justify-content: center;
-  gap: 40px;
   padding: 20px;
   background: #f8f9fa;
   border-radius: 6px;
+}
+
+.legend-flow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.legend-status {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
 }
 
 .legend-item {
@@ -513,20 +571,44 @@ onMounted(async () => {
   color: #666;
 }
 
+.legend-arrow {
+  font-size: 18px;
+  color: #999;
+  font-weight: bold;
+}
+
 .legend-icon {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: 3px;
   border: 2px solid #fff;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
+.legend-icon.data-collection {
+  background: #409EFF;
+}
+
+.legend-icon.kafka {
+  background: #E6A23C;
+}
+
+.legend-icon.backend {
+  background: #67C23A;
+}
+
+.legend-icon.frontend {
+  background: #F56C6C;
+}
+
 .legend-icon.online {
   background: #67C23A;
+  border-radius: 50%;
 }
 
 .legend-icon.offline {
   background: #CCCCCC;
+  border-radius: 50%;
 }
 
 @media (max-width: 768px) {
