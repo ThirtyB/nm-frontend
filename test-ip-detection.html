@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP地址获取测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .method {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IP地址获取测试</h1>
+        <p>测试不同的IP地址获取方法</p>
+        
+        <button onclick="testAllMethods()">测试所有方法</button>
+        <button onclick="testWebRTC()">测试WebRTC</button>
+        <button onclick="testPublicAPI()">测试公共API</button>
+        
+        <div id="webrtc-result" class="method">WebRTC方法: <span id="webrtc-status">未测试</span></div>
+        <div id="api-result" class="method">公共API方法: <span id="api-status">未测试</span></div>
+        <div id="final-result" class="method">最终IP: <span id="final-status">未测试</span></div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // WebRTC获取本地IP
+        async function getLocalIPViaWebRTC() {
+            return new Promise((resolve) => {
+                const rtc = new RTCPeerConnection({ iceServers: [] });
+                const localIPs = new Set();
+                
+                rtc.createDataChannel('');
+                
+                rtc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        const candidate = event.candidate.candidate;
+                        const ipMatch = candidate.match(/(\d+\.\d+\.\d+\.\d+)/);
+                        if (ipMatch) {
+                            const ip = ipMatch[1];
+                            if (!ip.startsWith('127.') && !ip.startsWith('169.254.') && !ip.startsWith('::1')) {
+                                localIPs.add(ip);
+                            }
+                        }
+                    }
+                };
+                
+                rtc.createOffer()
+                    .then(offer => rtc.setLocalDescription(offer))
+                    .catch(() => {});
+                
+                setTimeout(() => {
+                    rtc.close();
+                    const ips = Array.from(localIPs);
+                    // 优先返回192.168.x.x或10.x.x.x网段的IP
+                    const preferredIP = ips.find(ip => 
+                        ip.startsWith('192.168.') || 
+                        ip.startsWith('10.') || 
+                        ip.startsWith('172.')
+                    );
+                    resolve(preferredIP || ips[0] || null);
+                }, 2000);
+            });
+        }
+
+        // 通过公共API获取IP
+        async function getPublicIP() {
+            const apis = [
+                'https://api.ipify.org?format=json',
+                'https://httpbin.org/ip',
+                'https://api.ip.sb/ip',
+                'https://ifconfig.me/ip'
+            ];
+
+            for (const api of apis) {
+                try {
+                    const response = await fetch(api, { timeout: 3000 });
+                    if (response.ok) {
+                        const data = await response.text();
+                        const ip = data.includes('"') ? JSON.parse(data).ip : data.trim();
+                        if (ip && isValidIP(ip)) {
+                            return ip;
+                        }
+                    }
+                } catch (error) {
+                    console.warn(`API ${api} 失败:`, error.message);
+                    continue;
+                }
+            }
+            
+            return null;
+        }
+
+        // 验证IP地址格式
+        function isValidIP(ip) {
+            const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            return ipRegex.test(ip.trim());
+        }
+
+        // 测试WebRTC方法
+        async function testWebRTC() {
+            const element = document.getElementById('webrtc-result');
+            const status = document.getElementById('webrtc-status');
+            
+            element.className = 'method loading';
+            status.textContent = '正在获取...';
+            
+            try {
+                const ip = await getLocalIPViaWebRTC();
+                if (ip) {
+                    element.className = 'method success';
+                    status.textContent = `成功获取到IP: ${ip}`;
+                } else {
+                    element.className = 'method error';
+                    status.textContent = '获取失败，未找到有效IP';
+                }
+            } catch (error) {
+                element.className = 'method error';
+                status.textContent = `获取失败: ${error.message}`;
+            }
+        }
+
+        // 测试公共API方法
+        async function testPublicAPI() {
+            const element = document.getElementById('api-result');
+            const status = document.getElementById('api-status');
+            
+            element.className = 'method loading';
+            status.textContent = '正在获取...';
+            
+            try {
+                const ip = await getPublicIP();
+                if (ip) {
+                    element.className = 'method success';
+                    status.textContent = `成功获取到IP: ${ip}`;
+                } else {
+                    element.className = 'method error';
+                    status.textContent = '获取失败，所有API都不可用';
+                }
+            } catch (error) {
+                element.className = 'method error';
+                status.textContent = `获取失败: ${error.message}`;
+            }
+        }
+
+        // 测试完整的IP获取逻辑
+        async function testAllMethods() {
+            await testWebRTC();
+            await testPublicAPI();
+            
+            const finalElement = document.getElementById('final-result');
+            const finalStatus = document.getElementById('final-status');
+            const resultDiv = document.getElementById('result');
+            
+            finalElement.className = 'method loading';
+            finalStatus.textContent = '正在确定最终IP...';
+            
+            try {
+                // 模拟完整的IP获取逻辑
+                const localIP = await getLocalIPViaWebRTC();
+                let finalIP;
+                
+                if (localIP && localIP !== '127.0.0.1' && !localIP.startsWith('169.254')) {
+                    finalIP = localIP;
+                } else {
+                    finalIP = await getPublicIP();
+                }
+                
+                if (!finalIP) {
+                    finalIP = '192.168.1.100'; // 默认IP
+                }
+                
+                finalElement.className = 'method success';
+                finalStatus.textContent = finalIP;
+                
+                resultDiv.className = 'success';
+                resultDiv.textContent = `最终确定的IP地址: ${finalIP}`;
+                
+            } catch (error) {
+                finalElement.className = 'method error';
+                finalStatus.textContent = '获取失败';
+                
+                resultDiv.className = 'error';
+                resultDiv.textContent = `IP获取失败: ${error.message}`;
+            }
+        }
+
+        // 页面加载时自动测试
+        window.onload = function() {
+            console.log('页面加载完成，可以开始测试IP获取功能');
+        };
+    </script>
+</body>
+</html>

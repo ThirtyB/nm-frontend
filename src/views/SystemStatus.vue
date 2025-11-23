@@ -1,5 +1,66 @@
 <template>
   <div class="system-status">
+    <!-- 心跳服务状态卡片 -->
+    <div class="heartbeat-status-card">
+      <div class="card-header">
+        <h3>
+          <el-icon><Timer /></el-icon>
+          前端心跳服务
+        </h3>
+        <div class="heartbeat-controls">
+          <el-switch
+            v-model="heartbeatEnabled"
+            @change="toggleHeartbeat"
+            active-text="已启用"
+            inactive-text="已禁用"
+            :loading="heartbeatLoading"
+          />
+          <el-button 
+            size="small" 
+            @click="sendHeartbeatNow"
+            :loading="sendingHeartbeat"
+            type="primary"
+            plain
+          >
+            立即发送
+          </el-button>
+        </div>
+      </div>
+      <div class="heartbeat-info">
+        <div class="info-item">
+          <span class="label">服务状态:</span>
+          <el-tag :type="heartbeatStatus.isRunning ? 'success' : 'danger'">
+            {{ heartbeatStatus.isRunning ? '运行中' : '已停止' }}
+          </el-tag>
+        </div>
+        <div class="info-item">
+          <span class="label">发送间隔:</span>
+          <span>30秒</span>
+        </div>
+        <div class="info-item">
+          <span class="label">服务名称:</span>
+          <span>前端</span>
+        </div>
+        <div class="info-item">
+          <span class="label">当前IP:</span>
+          <span>{{ currentIP || '获取中...' }}</span>
+          <el-button 
+            size="small" 
+            @click="refreshIP"
+            :loading="refreshingIP"
+            text
+            style="margin-left: 8px; padding: 0;"
+          >
+            刷新
+          </el-button>
+        </div>
+        <div class="info-item">
+          <span class="label">最后发送:</span>
+          <span>{{ lastHeartbeatTime || '从未发送' }}</span>
+        </div>
+      </div>
+    </div>
+
     <div class="page-header">
       <h1>系统存活状态</h1>
       <div class="refresh-controls">
@@ -83,7 +144,9 @@
 import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { Timer } from '@element-plus/icons-vue'
 import api from '@/utils/api'
+import heartbeatService from '@/services/heartbeat'
 
 const chartRef = ref(null)
 const chart = ref(null)
@@ -91,6 +154,18 @@ const loading = ref(false)
 const serviceData = ref([])
 const lastUpdateTime = ref(new Date())
 const timeRange = ref([])
+
+// 心跳服务相关状态
+const heartbeatEnabled = ref(true)
+const heartbeatLoading = ref(false)
+const sendingHeartbeat = ref(false)
+const heartbeatStatus = ref({
+  isRunning: false,
+  interval: '30秒'
+})
+const lastHeartbeatTime = ref('')
+const currentIP = ref('')
+const refreshingIP = ref(false)
 
 // 时间快捷选项
 const timeShortcuts = [
@@ -246,6 +321,62 @@ const getStatusTagType = (time) => {
   if (diff < 30000) return 'success'
   if (diff < 60000) return 'warning'
   return 'danger'
+}
+
+// 心跳服务相关方法
+const toggleHeartbeat = async (enabled) => {
+  heartbeatLoading.value = true
+  try {
+    if (enabled) {
+      heartbeatService.start()
+      ElMessage.success('心跳服务已启动')
+    } else {
+      heartbeatService.stop()
+      ElMessage.info('心跳服务已停止')
+    }
+    updateHeartbeatStatus()
+  } catch (error) {
+    console.error('切换心跳服务状态失败:', error)
+    ElMessage.error('操作失败')
+    heartbeatEnabled.value = !enabled // 恢复原状态
+  } finally {
+    heartbeatLoading.value = false
+  }
+}
+
+const sendHeartbeatNow = async () => {
+  sendingHeartbeat.value = true
+  try {
+    const result = await heartbeatService.sendHeartbeat()
+    if (result) {
+      ElMessage.success('心跳发送成功')
+      lastHeartbeatTime.value = new Date().toLocaleString('zh-CN')
+    }
+  } catch (error) {
+    console.error('发送心跳失败:', error)
+    ElMessage.error('发送心跳失败')
+  } finally {
+    sendingHeartbeat.value = false
+  }
+}
+
+const updateHeartbeatStatus = () => {
+  heartbeatStatus.value = heartbeatService.getStatus()
+  heartbeatEnabled.value = heartbeatStatus.value.isRunning
+}
+
+const refreshIP = async () => {
+  refreshingIP.value = true
+  try {
+    const ip = await heartbeatService.getCurrentIP()
+    currentIP.value = ip
+    ElMessage.success(`IP地址已更新: ${ip}`)
+  } catch (error) {
+    console.error('获取IP地址失败:', error)
+    ElMessage.error('获取IP地址失败')
+  } finally {
+    refreshingIP.value = false
+  }
 }
 
 // 更新图表
@@ -702,6 +833,12 @@ onMounted(async () => {
   await nextTick()
   initChart()
   
+  // 初始化心跳服务状态
+  updateHeartbeatStatus()
+  
+  // 获取当前IP地址
+  await refreshIP()
+  
   // 设置默认时间范围（最近5分钟）
   const endTime = new Date()
   const startTime = new Date(endTime.getTime() - 5 * 60 * 1000)
@@ -714,6 +851,24 @@ onMounted(async () => {
   
   // 设置定时刷新
   setInterval(fetchSystemStatus, 30000) // 30秒刷新一次
+  
+  // 定时更新心跳服务状态
+  setInterval(updateHeartbeatStatus, 5000) // 5秒更新一次状态
+  
+  // 定时刷新IP地址（每分钟）
+  setInterval(refreshIP, 60000) // 60秒刷新一次IP
+  
+  // 监听心跳服务的成功发送
+  const originalSendHeartbeat = heartbeatService.sendHeartbeat.bind(heartbeatService)
+  heartbeatService.sendHeartbeat = async function() {
+    const result = await originalSendHeartbeat()
+    if (result) {
+      lastHeartbeatTime.value = new Date().toLocaleString('zh-CN')
+      // 每次发送成功后更新显示的IP
+      currentIP.value = await heartbeatService.getCurrentIP()
+    }
+    return result
+  }
 })
 </script>
 
@@ -723,6 +878,84 @@ onMounted(async () => {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.heartbeat-status-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  color: white;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.card-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.heartbeat-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heartbeat-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-item .label {
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.info-item span:not(.label) {
+  font-weight: 600;
+}
+
+/* 修改 Element Plus 组件样式以适配深色背景 */
+.heartbeat-status-card :deep(.el-switch__label) {
+  color: white;
+}
+
+.heartbeat-status-card :deep(.el-switch.is-checked .el-switch__core) {
+  background-color: #67c23a;
+  border-color: #67c23a;
+}
+
+.heartbeat-status-card :deep(.el-tag) {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
+.heartbeat-status-card :deep(.el-tag.el-tag--success) {
+  background-color: rgba(103, 194, 58, 0.8);
+  border-color: rgba(103, 194, 58, 0.9);
+}
+
+.heartbeat-status-card :deep(.el-tag.el-tag--danger) {
+  background-color: rgba(245, 108, 108, 0.8);
+  border-color: rgba(245, 108, 108, 0.9);
 }
 
 .page-header {
