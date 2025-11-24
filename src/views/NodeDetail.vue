@@ -317,8 +317,9 @@
 
       <!-- 图表展示 -->
       <div class="charts-section" v-if="!loading && metricsData.length > 0">
+        <!-- 第一行：CPU、内存、磁盘图表 -->
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="8">
             <el-card>
               <template #header>
                 <span>CPU使用率趋势</span>
@@ -326,7 +327,7 @@
               <div ref="cpuChart" class="chart-container"></div>
             </el-card>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <el-card>
               <template #header>
                 <span>内存使用率趋势</span>
@@ -334,9 +335,7 @@
               <div ref="memoryChart" class="chart-container"></div>
             </el-card>
           </el-col>
-        </el-row>
-        <el-row :gutter="20" style="margin-top: 20px;">
-          <el-col :span="12">
+          <el-col :span="8">
             <el-card>
               <template #header>
                 <span>磁盘使用率趋势</span>
@@ -344,12 +343,23 @@
               <div ref="diskChart" class="chart-container"></div>
             </el-card>
           </el-col>
+        </el-row>
+        <!-- 第二行：网络、Swap图表 -->
+        <el-row :gutter="20" style="margin-top: 20px;">
           <el-col :span="12">
             <el-card>
               <template #header>
                 <span>网络速率趋势</span>
               </template>
               <div ref="networkChart" class="chart-container"></div>
+            </el-card>
+          </el-col>
+          <el-col :span="12">
+            <el-card>
+              <template #header>
+                <span>Swap使用率趋势</span>
+              </template>
+              <div ref="swapChart" class="chart-container"></div>
             </el-card>
           </el-col>
         </el-row>
@@ -527,7 +537,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -567,11 +577,13 @@ const cpuChart = ref(null)
 const memoryChart = ref(null)
 const diskChart = ref(null)
 const networkChart = ref(null)
+const swapChart = ref(null)
 
 let cpuChartInstance = null
 let memoryChartInstance = null
 let diskChartInstance = null
 let networkChartInstance = null
+let swapChartInstance = null
 
 // 时间快捷选项
 const timeShortcuts = TIME_SHORTCUTS
@@ -581,41 +593,41 @@ const latestMetrics = computed(() => {
   if (!metricsData.value.length) return {}
   const latest = metricsData.value[metricsData.value.length - 1]
   
-  // CPU相关
-  const cpu_usr = (latest.cpu_usr || 0).toFixed(2)
-  const cpu_sys = (latest.cpu_sys || 0).toFixed(2)
-  const cpu_iow = (latest.cpu_iow || 0).toFixed(2)
-  const cpu_total = ((latest.cpu_usr || 0) + (latest.cpu_sys || 0) + (latest.cpu_iow || 0)).toFixed(2)
+  // CPU相关 - 保留1位小数
+  const cpu_usr = ((latest.cpu_usr || 0)).toFixed(1)
+  const cpu_sys = ((latest.cpu_sys || 0)).toFixed(1)
+  const cpu_iow = ((latest.cpu_iow || 0)).toFixed(1)
+  const cpu_total = ((latest.cpu_usr || 0) + (latest.cpu_sys || 0) + (latest.cpu_iow || 0)).toFixed(1)
   
-  // 内存相关
-  const mem_total_mb = (latest.mem_total / 1024).toFixed(2)
-  const mem_free_mb = (latest.mem_free / 1024).toFixed(2)
-  const mem_buff_mb = (latest.mem_buff / 1024).toFixed(2)
-  const mem_cache_mb = (latest.mem_cache / 1024).toFixed(2)
+  // 内存相关 - 大数值保留1位小数，小数保留整数
+  const mem_total_mb = (latest.mem_total / 1024).toFixed(1)
+  const mem_free_mb = (latest.mem_free / 1024).toFixed(1)
+  const mem_buff_mb = (latest.mem_buff / 1024).toFixed(1)
+  const mem_cache_mb = (latest.mem_cache / 1024).toFixed(1)
   let memory_usage_rate = 0
   if (latest.mem_total && latest.mem_free) {
-    memory_usage_rate = ((latest.mem_total - latest.mem_free) / latest.mem_total * 100).toFixed(2)
+    memory_usage_rate = ((latest.mem_total - latest.mem_free) / latest.mem_total * 100).toFixed(1)
   }
   
-  // 磁盘相关
+  // 磁盘相关 - 大数值保留1位小数，使用率保留1位小数
   const disk_name = latest.disk_name || '/'
-  const disk_total_gb = (latest.disk_total / 1024 / 1024 / 1024).toFixed(2)
-  const disk_used_gb = (latest.disk_used / 1024 / 1024 / 1024).toFixed(2)
-  const disk_usage_rate = (latest.disk_used_percent || 0).toFixed(2)
+  const disk_total_gb = (latest.disk_total / 1024 / 1024 / 1024).toFixed(1)
+  const disk_used_gb = (latest.disk_used / 1024 / 1024 / 1024).toFixed(1)
+  const disk_usage_rate = (latest.disk_used_percent || 0).toFixed(1)
   const disk_iops = latest.disk_iops || 0
   
-  // 网络相关
-  const net_rx_kbps = (latest.net_rx_kbps || 0).toFixed(2)
-  const net_tx_kbps = (latest.net_tx_kbps || 0).toFixed(2)
-  const net_rx_mb = Math.abs(latest.net_rx_kbytes / 1024).toFixed(2)
-  const net_tx_mb = Math.abs(latest.net_tx_kbytes / 1024).toFixed(2)
+  // 网络相关 - 保留1位小数
+  const net_rx_kbps = ((latest.net_rx_kbps || 0)).toFixed(1)
+  const net_tx_kbps = ((latest.net_tx_kbps || 0)).toFixed(1)
+  const net_rx_mb = Math.abs(latest.net_rx_kbytes / 1024).toFixed(1)
+  const net_tx_mb = Math.abs(latest.net_tx_kbytes / 1024).toFixed(1)
   
-  // Swap相关
-  const swap_total_mb = (latest.swap_total / 1024).toFixed(2)
-  const swap_used_mb = (latest.swap_used / 1024).toFixed(2)
+  // Swap相关 - 大数值保留1位小数，使用率保留1位小数
+  const swap_total_mb = (latest.swap_total / 1024).toFixed(1)
+  const swap_used_mb = (latest.swap_used / 1024).toFixed(1)
   let swap_usage_rate = 0
   if (latest.swap_total && latest.swap_total > 0) {
-    swap_usage_rate = (latest.swap_used / latest.swap_total * 100).toFixed(2)
+    swap_usage_rate = (latest.swap_used / latest.swap_total * 100).toFixed(1)
   }
   const swap_in = latest.swap_in || 0
   const swap_out = latest.swap_out || 0
@@ -729,9 +741,11 @@ const fetchNodeMetrics = async () => {
     if (metricsData.value.length === 0) {
       ElMessage.info('选定时间范围内没有监控数据')
     } else {
-      // 渲染图表
+      // 渲染图表 - 确保DOM完全渲染后再绘制
       nextTick(() => {
-        renderCharts()
+        setTimeout(() => {
+          renderCharts()
+        }, 100)
       })
     }
   } catch (error) {
@@ -748,18 +762,47 @@ const fetchNodeMetrics = async () => {
 const renderCharts = () => {
   if (!metricsData.value.length) return
   
-  const times = metricsData.value.map(item => formatTimestamp(item.ts))
+  // 优化时间显示 - 只显示关键时间点
+  const allTimes = metricsData.value.map(item => item.ts)
+  const times = allTimes.map((timestamp, index) => {
+    // 每5个点显示一次时间，或者首尾显示
+    if (index === 0 || index === allTimes.length - 1 || index % Math.ceil(allTimes.length / 6) === 0) {
+      return formatTimestamp(timestamp)
+    }
+    return ''
+  })
+  
   const cpuData = metricsData.value.map(item => 
-    ((item.cpu_usr || 0) + (item.cpu_sys || 0) + (item.cpu_iow || 0)).toFixed(2)
+    ((item.cpu_usr || 0) + (item.cpu_sys || 0) + (item.cpu_iow || 0))
   )
   const memoryData = metricsData.value.map(item => {
     if (!item.mem_total || !item.mem_free) return 0
-    return ((item.mem_total - item.mem_free) / item.mem_total * 100).toFixed(2)
+    return ((item.mem_total - item.mem_free) / item.mem_total * 100)
   })
   const diskData = metricsData.value.map(item => item.disk_used_percent || 0)
   const networkData = metricsData.value.map(item => 
-    ((item.net_rx_kbps || 0) + (item.net_tx_kbps || 0)).toFixed(2)
+    ((item.net_rx_kbps || 0) + (item.net_tx_kbps || 0))
   )
+  const swapData = metricsData.value.map(item => {
+    if (!item.swap_total || item.swap_total === 0) return 0
+    return ((item.swap_used || 0) / item.swap_total * 100)
+  })
+  
+  // 计算每个数据的最小最大值，用于自适应纵轴范围
+  const getAxisRange = (data, padding = 0.1) => {
+    const validData = data.filter(d => d !== null && d !== undefined)
+    if (validData.length === 0) return { min: 0, max: 100 }
+    
+    const min = Math.min(...validData)
+    const max = Math.max(...validData)
+    const range = max - min
+    const paddingValue = range * padding || 1
+    
+    return {
+      min: Math.max(0, min - paddingValue),
+      max: Math.min(100, max + paddingValue)
+    }
+  }
 
   // CPU图表
   if (cpuChart.value) {
@@ -767,23 +810,51 @@ const renderCharts = () => {
       cpuChartInstance.dispose()
     }
     cpuChartInstance = echarts.init(cpuChart.value)
+    const cpuRange = getAxisRange(cpuData)
+    
     cpuChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: function(params) {
+          const dataIndex = params[0].dataIndex
+          const fullTime = formatTimestamp(allTimes[dataIndex])
+          const value = params[0].value
+          return `${fullTime}<br/>CPU使用率: ${value.toFixed(1)}%`
+        }
+      },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { 
         type: 'category', 
         data: times, 
-        axisLabel: { rotate: 45, fontSize: 10 }
+        axisLabel: { 
+          rotate: 45, 
+          fontSize: 10,
+          interval: 0,
+          formatter: function(value, index) {
+            return value || ''
+          }
+        }
       },
-      yAxis: { type: 'value', name: '使用率(%)', max: 100 },
+      yAxis: { 
+        type: 'value', 
+        name: '使用率(%)', 
+        min: cpuRange.min,
+        max: cpuRange.max,
+        axisLabel: {
+          formatter: function(value) {
+            return value.toFixed(0)
+          }
+        }
+      },
       series: [{ 
         name: 'CPU使用率', 
         type: 'line', 
         data: cpuData, 
         smooth: true,
-        lineStyle: { width: 2 },
-        itemStyle: { radius: [4, 4, 0, 0] }
+        lineStyle: { width: 2, color: '#409EFF' },
+        itemStyle: { color: '#409EFF', radius: [4, 4, 0, 0] },
+        areaStyle: { opacity: 0.1, color: '#409EFF' }
       }]
     })
   }
@@ -794,23 +865,51 @@ const renderCharts = () => {
       memoryChartInstance.dispose()
     }
     memoryChartInstance = echarts.init(memoryChart.value)
+    const memoryRange = getAxisRange(memoryData)
+    
     memoryChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: function(params) {
+          const dataIndex = params[0].dataIndex
+          const fullTime = formatTimestamp(allTimes[dataIndex])
+          const value = params[0].value
+          return `${fullTime}<br/>内存使用率: ${value.toFixed(1)}%`
+        }
+      },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { 
         type: 'category', 
         data: times, 
-        axisLabel: { rotate: 45, fontSize: 10 }
+        axisLabel: { 
+          rotate: 45, 
+          fontSize: 10,
+          interval: 0,
+          formatter: function(value, index) {
+            return value || ''
+          }
+        }
       },
-      yAxis: { type: 'value', name: '使用率(%)', max: 100 },
+      yAxis: { 
+        type: 'value', 
+        name: '使用率(%)', 
+        min: memoryRange.min,
+        max: memoryRange.max,
+        axisLabel: {
+          formatter: function(value) {
+            return value.toFixed(0)
+          }
+        }
+      },
       series: [{ 
         name: '内存使用率', 
         type: 'line', 
         data: memoryData, 
         smooth: true,
-        lineStyle: { width: 2 },
-        itemStyle: { radius: [4, 4, 0, 0] }
+        lineStyle: { width: 2, color: '#67C23C' },
+        itemStyle: { color: '#67C23C', radius: [4, 4, 0, 0] },
+        areaStyle: { opacity: 0.1, color: '#67C23C' }
       }]
     })
   }
@@ -821,23 +920,51 @@ const renderCharts = () => {
       diskChartInstance.dispose()
     }
     diskChartInstance = echarts.init(diskChart.value)
+    const diskRange = getAxisRange(diskData)
+    
     diskChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: function(params) {
+          const dataIndex = params[0].dataIndex
+          const fullTime = formatTimestamp(allTimes[dataIndex])
+          const value = params[0].value
+          return `${fullTime}<br/>磁盘使用率: ${value.toFixed(1)}%`
+        }
+      },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { 
         type: 'category', 
         data: times, 
-        axisLabel: { rotate: 45, fontSize: 10 }
+        axisLabel: { 
+          rotate: 45, 
+          fontSize: 10,
+          interval: 0,
+          formatter: function(value, index) {
+            return value || ''
+          }
+        }
       },
-      yAxis: { type: 'value', name: '使用率(%)', max: 100 },
+      yAxis: { 
+        type: 'value', 
+        name: '使用率(%)', 
+        min: diskRange.min,
+        max: diskRange.max,
+        axisLabel: {
+          formatter: function(value) {
+            return value.toFixed(0)
+          }
+        }
+      },
       series: [{ 
         name: '磁盘使用率', 
         type: 'line', 
         data: diskData, 
         smooth: true,
-        lineStyle: { width: 2 },
-        itemStyle: { radius: [4, 4, 0, 0] }
+        lineStyle: { width: 2, color: '#E6A23C' },
+        itemStyle: { color: '#E6A23C', radius: [4, 4, 0, 0] },
+        areaStyle: { opacity: 0.1, color: '#E6A23C' }
       }]
     })
   }
@@ -848,23 +975,109 @@ const renderCharts = () => {
       networkChartInstance.dispose()
     }
     networkChartInstance = echarts.init(networkChart.value)
+    const networkRange = getAxisRange(networkData, 0.15) // 网络数据波动较大，增加padding
+    
     networkChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
-      tooltip: { trigger: 'axis' },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: function(params) {
+          const dataIndex = params[0].dataIndex
+          const fullTime = formatTimestamp(allTimes[dataIndex])
+          const value = params[0].value
+          return `${fullTime}<br/>网络速率: ${value.toFixed(1)} KB/s`
+        }
+      },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
       xAxis: { 
         type: 'category', 
         data: times, 
-        axisLabel: { rotate: 45, fontSize: 10 }
+        axisLabel: { 
+          rotate: 45, 
+          fontSize: 10,
+          interval: 0,
+          formatter: function(value, index) {
+            return value || ''
+          }
+        }
       },
-      yAxis: { type: 'value', name: '网络速率(KB/s)' },
+      yAxis: { 
+        type: 'value', 
+        name: '网络速率(KB/s)', 
+        min: networkRange.min,
+        max: networkRange.max,
+        axisLabel: {
+          formatter: function(value) {
+            if (value >= 1024) {
+              return (value / 1024).toFixed(1) + 'M'
+            }
+            return value.toFixed(0)
+          }
+        }
+      },
       series: [{ 
         name: '网络速率', 
         type: 'line', 
         data: networkData, 
         smooth: true,
-        lineStyle: { width: 2 },
-        itemStyle: { radius: [4, 4, 0, 0] }
+        lineStyle: { width: 2, color: '#F56C6C' },
+        itemStyle: { color: '#F56C6C', radius: [4, 4, 0, 0] },
+        areaStyle: { opacity: 0.1, color: '#F56C6C' }
+      }]
+    })
+  }
+
+  // Swap图表
+  if (swapChart.value) {
+    if (swapChartInstance) {
+      swapChartInstance.dispose()
+    }
+    swapChartInstance = echarts.init(swapChart.value)
+    const swapRange = getAxisRange(swapData)
+    
+    swapChartInstance.setOption({
+      title: { text: '', textStyle: { fontSize: 14 } },
+      tooltip: { 
+        trigger: 'axis',
+        formatter: function(params) {
+          const dataIndex = params[0].dataIndex
+          const fullTime = formatTimestamp(allTimes[dataIndex])
+          const value = params[0].value
+          return `${fullTime}<br/>Swap使用率: ${value.toFixed(1)}%`
+        }
+      },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { 
+        type: 'category', 
+        data: times, 
+        axisLabel: { 
+          rotate: 45, 
+          fontSize: 10,
+          interval: 0,
+          formatter: function(value, index) {
+            return value || ''
+          }
+        }
+      },
+      yAxis: { 
+        type: 'value', 
+        name: '使用率(%)', 
+        min: swapRange.min,
+        max: swapRange.max,
+        axisLabel: {
+          formatter: function(value) {
+            return value.toFixed(0)
+          }
+        }
+      },
+      series: [{ 
+        name: 'Swap使用率', 
+        type: 'line', 
+        data: swapData, 
+        smooth: true,
+        lineStyle: { width: 2, color: '#909399' },
+        itemStyle: { color: '#909399', radius: [4, 4, 0, 0] },
+        areaStyle: { opacity: 0.1, color: '#909399' }
       }]
     })
   }
@@ -1056,6 +1269,25 @@ const refreshScore = () => {
   }
 }
 
+// 窗口大小变化处理
+const handleResize = () => {
+  nextTick(() => {
+    const charts = [
+      { instance: cpuChartInstance, ref: cpuChart.value },
+      { instance: memoryChartInstance, ref: memoryChart.value },
+      { instance: diskChartInstance, ref: diskChart.value },
+      { instance: networkChartInstance, ref: networkChart.value },
+      { instance: swapChartInstance, ref: swapChart.value }
+    ]
+    
+    charts.forEach(chart => {
+      if (chart.instance && chart.ref) {
+        chart.instance.resize()
+      }
+    })
+  })
+}
+
 // 初始化
 onMounted(() => {
   // 从查询参数获取时间范围
@@ -1084,6 +1316,22 @@ onMounted(() => {
   fetchNodeMetrics()
   fetchNodeAlerts()
   // fetchNodeScore会在fetchNodeMetrics完成后自动调用
+  
+  // 添加窗口大小变化监听
+  window.addEventListener('resize', handleResize)
+})
+
+// 组件卸载时清理资源
+onUnmounted(() => {
+  // 移除窗口大小变化监听
+  window.removeEventListener('resize', handleResize)
+  
+  // 销毁图表实例
+  if (cpuChartInstance) cpuChartInstance.dispose()
+  if (memoryChartInstance) memoryChartInstance.dispose()
+  if (diskChartInstance) diskChartInstance.dispose()
+  if (networkChartInstance) networkChartInstance.dispose()
+  if (swapChartInstance) swapChartInstance.dispose()
 })
 </script>
 
@@ -1245,8 +1493,50 @@ onMounted(() => {
 }
 
 .chart-container {
-  height: 300px;
+  height: 280px;
   width: 100%;
+  min-height: 250px;
+}
+
+/* 响应式布局优化 */
+@media (max-width: 1400px) {
+  .chart-container {
+    height: 260px;
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .chart-container {
+    height: 240px;
+    min-height: 200px;
+  }
+}
+
+@media (max-width: 992px) {
+  .chart-container {
+    height: 220px;
+    min-height: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    height: 200px;
+    min-height: 160px;
+  }
+  
+  /* 在小屏幕上调整图表布局 */
+  .charts-section .el-col {
+    margin-bottom: 16px;
+  }
+}
+
+@media (max-width: 576px) {
+  .chart-container {
+    height: 180px;
+    min-height: 140px;
+  }
 }
 
 .data-table {
