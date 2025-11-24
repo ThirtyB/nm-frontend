@@ -228,7 +228,6 @@ const fetchActiveIPs = async () => {
       ElMessage.info('选定时间范围内没有活跃节点')
     }
   } catch (error) {
-    console.error('获取活跃IP列表失败:', error)
     ElMessage.error('获取节点数据失败')
   } finally {
     loading.value = false
@@ -252,7 +251,6 @@ const viewNodeDetail = (ip) => {
       query 
     })
   } catch (error) {
-    console.error('路由跳转失败:', error)
     ElMessage.error('页面跳转失败')
   }
 }
@@ -273,7 +271,6 @@ const getScoreTagType = (score) => {
 // 获取评分数据
 const fetchScores = async () => {
   if (!timeRange.value || timeRange.value.length !== 2) {
-    console.warn('时间范围未设置，跳过获取评分数据')
     return
   }
 
@@ -295,7 +292,7 @@ const fetchScores = async () => {
     })
     scoresMap.value = newScoresMap
   } catch (error) {
-    console.error('获取评分数据失败:', error)
+    // 获取评分数据失败，静默处理
   }
 }
 

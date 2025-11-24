@@ -247,7 +247,7 @@ const handleSubmit = async () => {
       ElMessage.error(result.message)
     }
   } catch (error) {
-    console.error('表单验证失败:', error)
+    // 表单验证失败，静默处理
   } finally {
     submitting.value = false
   }

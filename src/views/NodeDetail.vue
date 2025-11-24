@@ -771,7 +771,6 @@ const fetchNodeMetrics = async () => {
       })
     }
   } catch (error) {
-    console.error('获取节点监控数据失败:', error)
     ElMessage.error('获取节点数据失败')
   } finally {
     loading.value = false
@@ -899,7 +898,6 @@ const getHighestAlertLevel = () => {
 // 获取节点告警信息
 const fetchNodeAlerts = async () => {
   if (!timeRange.value || timeRange.value.length !== 2) {
-    console.warn('时间范围未设置，跳过告警查询')
     return
   }
 
@@ -914,7 +912,6 @@ const fetchNodeAlerts = async () => {
     })
     nodeAlerts.value = response.data.alerts || []
   } catch (error) {
-    console.error('获取节点告警信息失败:', error)
     if (error.message && error.message.includes('start_time')) {
       ElMessage.error('请选择时间范围')
     } else {
@@ -1016,7 +1013,6 @@ const fetchNodeScore = async () => {
     })
     nodeScore.value = response.data
   } catch (error) {
-    console.error('获取节点评分失败:', error)
     if (error.response?.status !== 404) {
       ElMessage.error('获取节点评分失败')
     }

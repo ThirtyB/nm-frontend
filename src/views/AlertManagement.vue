@@ -534,7 +534,6 @@ const fetchRules = async () => {
     const response = await getAlertRules(params)
     rules.value = response.data || []
   } catch (error) {
-    console.error('获取规则列表失败:', error)
     ElMessage.error('获取规则列表失败')
   } finally {
     loading.value = false
@@ -630,7 +629,6 @@ const submitForm = async () => {
     showCreateDialog.value = false
     fetchRules()
   } catch (error) {
-    console.error('提交失败:', error)
     if (error.response?.data?.detail) {
       ElMessage.error(error.response.data.detail)
     } else {
@@ -698,7 +696,6 @@ const deleteRule = async (rule) => {
     fetchRules()
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('删除失败:', error)
       ElMessage.error('删除失败')
     }
   }
@@ -710,7 +707,6 @@ const toggleRuleStatus = async (rule) => {
     await updateAlertRule(rule.id, { is_active: rule.is_active })
     ElMessage.success(`规则已${rule.is_active ? '激活' : '停用'}`)
   } catch (error) {
-    console.error('状态更新失败:', error)
     ElMessage.error('状态更新失败')
     // 恢复原状态
     rule.is_active = !rule.is_active

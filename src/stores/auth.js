@@ -60,7 +60,6 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('user', JSON.stringify(user.value))
       return true
     } catch (error) {
-      console.error('获取用户信息失败:', error)
       // 如果获取失败，清除无效的token
       logout()
       return false

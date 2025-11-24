@@ -13,16 +13,13 @@ class HeartbeatService {
       // 方法1: 尝试通过WebRTC获取本地IP
       const localIP = await this.getLocalIPViaWebRTC()
       if (localIP && localIP !== '127.0.0.1' && !localIP.startsWith('169.254')) {
-        console.log('通过WebRTC获取到IP:', localIP)
         return localIP
       }
 
       // 方法2: 通过多个公共API获取IP，优先获取可能的内网IP
       const publicIP = await this.getPublicIP()
-      console.log('通过公共API获取到IP:', publicIP)
       return publicIP
     } catch (error) {
-      console.error('获取IP地址失败:', error)
       // 如果所有方法都失败，返回一个默认的内网IP段
       return '192.168.1.100'
     }
@@ -87,7 +84,6 @@ class HeartbeatService {
           }
         }
       } catch (error) {
-        console.warn(`API ${api} 失败:`, error.message)
         continue
       }
     }
@@ -119,10 +115,8 @@ class HeartbeatService {
         }
       })
 
-      console.log('心跳报告发送成功:', response.data)
       return response.data
     } catch (error) {
-      console.error('心跳报告发送失败:', error.message)
       // 不抛出错误，避免影响定时任务
     }
   }
@@ -130,11 +124,8 @@ class HeartbeatService {
   // 启动定时任务
   start() {
     if (this.isRunning) {
-      console.log('心跳服务已在运行中')
       return
     }
-
-    console.log('启动心跳服务，每30秒发送一次心跳报告')
     
     // 立即发送一次
     this.sendHeartbeat()
@@ -150,7 +141,6 @@ class HeartbeatService {
   // 停止定时任务
   stop() {
     if (!this.isRunning) {
-      console.log('心跳服务未在运行')
       return
     }
 
@@ -160,7 +150,6 @@ class HeartbeatService {
     }
 
     this.isRunning = false
-    console.log('心跳服务已停止')
   }
 
   // 获取当前IP地址

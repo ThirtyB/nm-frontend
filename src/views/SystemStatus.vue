@@ -1,65 +1,5 @@
 <template>
   <div class="system-status">
-    <!-- 心跳服务状态卡片 -->
-    <div class="heartbeat-status-card">
-      <div class="card-header">
-        <h3>
-          <el-icon><Timer /></el-icon>
-          前端心跳服务
-        </h3>
-        <div class="heartbeat-controls">
-          <el-switch
-            v-model="heartbeatEnabled"
-            @change="toggleHeartbeat"
-            active-text="已启用"
-            inactive-text="已禁用"
-            :loading="heartbeatLoading"
-          />
-          <el-button 
-            size="small" 
-            @click="sendHeartbeatNow"
-            :loading="sendingHeartbeat"
-            type="primary"
-            plain
-          >
-            立即发送
-          </el-button>
-        </div>
-      </div>
-      <div class="heartbeat-info">
-        <div class="info-item">
-          <span class="label">服务状态:</span>
-          <el-tag :type="heartbeatStatus.isRunning ? 'success' : 'danger'">
-            {{ heartbeatStatus.isRunning ? '运行中' : '已停止' }}
-          </el-tag>
-        </div>
-        <div class="info-item">
-          <span class="label">发送间隔:</span>
-          <span>30秒</span>
-        </div>
-        <div class="info-item">
-          <span class="label">服务名称:</span>
-          <span>前端</span>
-        </div>
-        <div class="info-item">
-          <span class="label">当前IP:</span>
-          <span>{{ currentIP || '获取中...' }}</span>
-          <el-button 
-            size="small" 
-            @click="refreshIP"
-            :loading="refreshingIP"
-            text
-            style="margin-left: 8px; padding: 0;"
-          >
-            刷新
-          </el-button>
-        </div>
-        <div class="info-item">
-          <span class="label">最后发送:</span>
-          <span>{{ lastHeartbeatTime || '从未发送' }}</span>
-        </div>
-      </div>
-    </div>
 
     <div class="page-header">
       <h1>系统存活状态</h1>
@@ -144,7 +84,6 @@
 import { ref, onMounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { Timer } from '@element-plus/icons-vue'
 import api from '@/utils/api'
 import heartbeatService from '@/services/heartbeat'
 
@@ -154,18 +93,6 @@ const loading = ref(false)
 const serviceData = ref([])
 const lastUpdateTime = ref(new Date())
 const timeRange = ref([])
-
-// 心跳服务相关状态
-const heartbeatEnabled = ref(true)
-const heartbeatLoading = ref(false)
-const sendingHeartbeat = ref(false)
-const heartbeatStatus = ref({
-  isRunning: false,
-  interval: '30秒'
-})
-const lastHeartbeatTime = ref('')
-const currentIP = ref('')
-const refreshingIP = ref(false)
 
 // 时间快捷选项
 const timeShortcuts = [
@@ -251,54 +178,20 @@ const fetchSystemStatus = async () => {
       end_time: Math.floor(utcEndTime.getTime() / 1000)
     }
     
-    console.log('========== 时间戳处理 ==========')
-    console.log('本地 startTime:', startTime, '本地时间戳:', Math.floor(startTime.getTime() / 1000))
-    console.log('UTC startTime:', utcStartTime, 'UTC时间戳:', requestData.start_time)
-    console.log('本地 endTime:', endTime, '本地时间戳:', Math.floor(endTime.getTime() / 1000))
-    console.log('UTC endTime:', utcEndTime, 'UTC时间戳:', requestData.end_time)
-    console.log('发送的请求数据:', requestData)
-    console.log('================================')
+
     
     const response = await api.post('/heartbeat/status', requestData)
 
-    console.log('========== 系统状态数据 ==========')
-    console.log('完整响应数据:', response.data)
-    console.log('服务状态数据:', response.data.service_status)
-    console.log('流量状态数据:', response.data.traffic_status)
-    
-    // 详细日志各服务类型
-    if (response.data.service_status) {
-      console.log('--- 数据采集服务 ---')
-      console.log(response.data.service_status.data_collection)
-      console.log('--- Kafka服务 ---')
-      console.log(response.data.service_status.kafka_process)
-      console.log('--- Redis服务 ---')
-      console.log(response.data.service_status.redis)
-      console.log('--- 前端服务 ---')
-      console.log(response.data.service_status.frontend)
-      console.log('--- 后端服务 ---')
-      console.log(response.data.service_status.backend)
-      console.log('--- 数据库状态 ---')
-      console.log(response.data.service_status.database)
-    }
-    
-    // 详细日志流量数据
-    if (response.data.traffic_status) {
-      console.log('--- 流量数据详情 ---')
-      console.log('数据采集到Kafka:', response.data.traffic_status.data_collection_to_kafka)
-      console.log('Kafka到数据库:', response.data.traffic_status.kafka_to_database)
-      console.log('数据库到后端:', response.data.traffic_status.database_to_backend)
-      console.log('Redis到后端:', response.data.traffic_status.redis_to_backend)
-      console.log('后端到前端:', response.data.traffic_status.backend_to_frontend)
-    }
-    console.log('================================')
+
     
     serviceData.value = response.data
     lastUpdateTime.value = new Date()
     
-    updateChart()
+    // 使用 setTimeout 确保 DOM 更新完成后再渲染图表
+    setTimeout(() => {
+      updateChart()
+    }, 0)
   } catch (error) {
-    console.error('获取系统状态失败:', error)
     ElMessage.error('获取系统状态失败')
   } finally {
     loading.value = false
@@ -323,65 +216,13 @@ const getStatusTagType = (time) => {
   return 'danger'
 }
 
-// 心跳服务相关方法
-const toggleHeartbeat = async (enabled) => {
-  heartbeatLoading.value = true
-  try {
-    if (enabled) {
-      heartbeatService.start()
-      ElMessage.success('心跳服务已启动')
-    } else {
-      heartbeatService.stop()
-      ElMessage.info('心跳服务已停止')
-    }
-    updateHeartbeatStatus()
-  } catch (error) {
-    console.error('切换心跳服务状态失败:', error)
-    ElMessage.error('操作失败')
-    heartbeatEnabled.value = !enabled // 恢复原状态
-  } finally {
-    heartbeatLoading.value = false
-  }
-}
 
-const sendHeartbeatNow = async () => {
-  sendingHeartbeat.value = true
-  try {
-    const result = await heartbeatService.sendHeartbeat()
-    if (result) {
-      ElMessage.success('心跳发送成功')
-      lastHeartbeatTime.value = new Date().toLocaleString('zh-CN')
-    }
-  } catch (error) {
-    console.error('发送心跳失败:', error)
-    ElMessage.error('发送心跳失败')
-  } finally {
-    sendingHeartbeat.value = false
-  }
-}
-
-const updateHeartbeatStatus = () => {
-  heartbeatStatus.value = heartbeatService.getStatus()
-  heartbeatEnabled.value = heartbeatStatus.value.isRunning
-}
-
-const refreshIP = async () => {
-  refreshingIP.value = true
-  try {
-    const ip = await heartbeatService.getCurrentIP()
-    currentIP.value = ip
-    ElMessage.success(`IP地址已更新: ${ip}`)
-  } catch (error) {
-    console.error('获取IP地址失败:', error)
-    ElMessage.error('获取IP地址失败')
-  } finally {
-    refreshingIP.value = false
-  }
-}
 
 // 更新图表
 const updateChart = () => {
-  if (!chart.value) return
+  if (!chart.value) {
+    return
+  }
 
   // 处理数据 - 后端返回的是按服务类型分组的对象
   const dataCollectors = []
@@ -391,10 +232,11 @@ const updateChart = () => {
   const redisServices = []
 
   // 处理数据采集服务
-  if (serviceData.value.service_status?.data_collection) {
-    serviceData.value.service_status.data_collection.forEach(service => {
+  if (serviceData.value.data_collection) {
+    serviceData.value.data_collection.forEach((service, index) => {
       dataCollectors.push({
-        name: service.service_name || `数据采集${dataCollectors.length + 1}`,
+        name: `${service.service_name || '数据采集'}_${service.ip_address}`,
+        displayName: service.service_name || `数据采集${index + 1}`,
         ip: service.ip_address,
         online: service.is_online,
         lastReport: service.last_report_time
@@ -403,10 +245,11 @@ const updateChart = () => {
   }
 
   // 处理kafka服务
-  if (serviceData.value.service_status?.kafka_process) {
-    serviceData.value.service_status.kafka_process.forEach(service => {
+  if (serviceData.value.kafka) {
+    serviceData.value.kafka.forEach((service, index) => {
       kafkaServices.push({
-        name: service.service_name || `Kafka${kafkaServices.length + 1}`,
+        name: `${service.service_name || 'Kafka'}_${service.ip_address}`,
+        displayName: service.service_name || `Kafka${index + 1}`,
         ip: service.ip_address,
         online: service.is_online,
         lastReport: service.last_report_time
@@ -415,10 +258,11 @@ const updateChart = () => {
   }
 
   // 处理Redis服务
-  if (serviceData.value.service_status?.redis) {
-    serviceData.value.service_status.redis.forEach(service => {
+  if (serviceData.value.redis) {
+    serviceData.value.redis.forEach((service, index) => {
       redisServices.push({
-        name: service.service_name || `Redis${redisServices.length + 1}`,
+        name: `${service.service_name || 'Redis'}_${service.ip_address}`,
+        displayName: service.service_name || `Redis${index + 1}`,
         ip: service.ip_address,
         online: service.is_online,
         lastReport: service.last_report_time
@@ -427,10 +271,11 @@ const updateChart = () => {
   }
 
   // 处理前端服务
-  if (serviceData.value.service_status?.frontend) {
-    serviceData.value.service_status.frontend.forEach(service => {
+  if (serviceData.value.frontend) {
+    serviceData.value.frontend.forEach((service, index) => {
       frontendServices.push({
-        name: service.service_name || `前端${frontendServices.length + 1}`,
+        name: `${service.service_name || '前端'}_${service.ip_address}`,
+        displayName: service.service_name || `前端${index + 1}`,
         ip: service.ip_address,
         online: service.is_online,
         lastReport: service.last_report_time
@@ -439,10 +284,11 @@ const updateChart = () => {
   }
 
   // 处理后端服务
-  if (serviceData.value.service_status?.backend) {
-    serviceData.value.service_status.backend.forEach(service => {
+  if (serviceData.value.backend) {
+    serviceData.value.backend.forEach((service, index) => {
       backendServices.push({
-        name: service.service_name || `后端${backendServices.length + 1}`,
+        name: `${service.service_name || '后端'}_${service.ip_address}`,
+        displayName: service.service_name || `后端${index + 1}`,
         ip: service.ip_address,
         online: service.is_online,
         lastReport: service.last_report_time
@@ -452,13 +298,14 @@ const updateChart = () => {
 
   // 处理数据库服务（单独处理，与Redis在同一层）
   let databaseService = null
-  if (serviceData.value.service_status?.database) {
-    const dbService = serviceData.value.service_status.database
+  if (serviceData.value.database && serviceData.value.database.length > 0) {
+    const dbService = serviceData.value.database[0]
     databaseService = {
-      name: '数据库',
-      ip: 'database_server',
-      online: dbService.is_connected,
-      lastReport: dbService.connection_time
+      name: `${dbService.service_name || '数据库'}_${dbService.ip_address}`,
+      displayName: dbService.service_name || '数据库',
+      ip: dbService.ip_address,
+      online: dbService.is_online,
+      lastReport: dbService.last_report_time
     }
   }
 
@@ -476,44 +323,102 @@ const updateChart = () => {
         second: '2-digit'
       })
     } catch (error) {
-      console.warn('时间格式化错误:', utcTimeString, error)
       return utcTimeString
     }
   }
 
   // 获取流量数据用于连接权重
-  const trafficData = serviceData.value.traffic_status || {}
+  const trafficData = serviceData.value || {}
+  
+  // 计算总流量用于汇总
+  const calculateTotalTraffic = (trafficType) => {
+    if (trafficType === 'data_collection_to_kafka') {
+      const trafficList = trafficData.data_collection_to_kafka
+      if (Array.isArray(trafficList)) {
+        return trafficList.reduce((sum, t) => sum + (t.data_count || 0), 0)
+      }
+    }
+    if (trafficType === 'kafka_to_database') {
+      const traffic = trafficData.kafka_to_database
+      return traffic ? (traffic.data_count || 0) : 0
+    }
+    if (trafficType === 'database_to_backend') {
+      const trafficList = trafficData.database_to_backend
+      if (Array.isArray(trafficList)) {
+        return trafficList.reduce((sum, t) => sum + (t.data_count || 0), 0)
+      }
+    }
+    if (trafficType === 'redis_to_backend') {
+      const trafficList = trafficData.redis_to_backend
+      if (Array.isArray(trafficList)) {
+        return trafficList.reduce((sum, t) => sum + (t.data_count || 0), 0)
+      }
+    }
+    if (trafficType === 'backend_to_frontend') {
+      const trafficList = trafficData.backend_to_frontend
+      if (Array.isArray(trafficList)) {
+        return trafficList.reduce((sum, t) => sum + (t.data_count || 0), 0)
+      }
+    }
+    return 0
+  }
+  
+  // 计算最大流量用于归一化
+  const maxTraffic = Math.max(
+    calculateTotalTraffic('data_collection_to_kafka'),
+    calculateTotalTraffic('kafka_to_database'),
+    calculateTotalTraffic('database_to_backend'),
+    calculateTotalTraffic('redis_to_backend'),
+    calculateTotalTraffic('backend_to_frontend'),
+    1
+  )
+  
   const getTrafficWeight = (sourceType, targetType, sourceIp, targetIp) => {
-    // 根据流量数据返回权重
+    // 根据流量数据返回权重，基于实际数据大小
     if (sourceType === 'data_collection' && targetType === 'kafka') {
-      const traffic = trafficData.data_collection_to_kafka?.find(
-        t => (t.source_ip === sourceIp || t.target_ip === targetIp)
-      )
-      return traffic ? Math.min(traffic.data_count / 100, 20) : 1
+      const trafficList = trafficData.data_collection_to_kafka
+      if (Array.isArray(trafficList)) {
+        const traffic = trafficList.find(
+          t => (t.source_ip === sourceIp || t.target_ip === targetIp)
+        )
+        return traffic ? Math.max((traffic.data_count / maxTraffic) * 30, 1) : 1
+      }
     }
     if (sourceType === 'kafka' && targetType === 'database') {
-      const traffic = trafficData.kafka_to_database?.find(
-        t => (t.source_ip === sourceIp || t.target_ip === targetIp)
-      )
-      return traffic ? Math.min(traffic.data_count / 100, 15) : 1
+      const traffic = trafficData.kafka_to_database
+      if (traffic && traffic.data_count > 0) {
+        // Kafka到数据库应该是所有数据采集的总和，所以权重最大
+        const totalDataCollection = calculateTotalTraffic('data_collection_to_kafka')
+        const kafkaToDbTraffic = Math.max(traffic.data_count, totalDataCollection)
+        return Math.max((kafkaToDbTraffic / maxTraffic) * 40, 5)
+      }
     }
     if (sourceType === 'database' && targetType === 'backend') {
-      const traffic = trafficData.database_to_backend?.find(
-        t => (t.source_ip === sourceIp || t.target_ip === targetIp)
-      )
-      return traffic ? Math.min(traffic.data_count / 100, 10) : 1
+      const trafficList = trafficData.database_to_backend
+      if (Array.isArray(trafficList)) {
+        const traffic = trafficList.find(
+          t => (t.source_ip === sourceIp || t.target_ip === targetIp)
+        )
+        return traffic ? Math.max((traffic.data_count / maxTraffic) * 25, 1) : 1
+      }
     }
     if (sourceType === 'redis' && targetType === 'backend') {
-      const traffic = trafficData.redis_to_backend?.find(
-        t => (t.source_ip === sourceIp || t.target_ip === targetIp)
-      )
-      return traffic ? Math.min(traffic.data_count / 100, 8) : 1
+      const trafficList = trafficData.redis_to_backend
+      if (Array.isArray(trafficList)) {
+        const traffic = trafficList.find(
+          t => (t.source_ip === sourceIp || t.target_ip === targetIp)
+        )
+        return traffic ? Math.max((traffic.data_count / maxTraffic) * 20, 1) : 1
+      }
     }
     if (sourceType === 'backend' && targetType === 'frontend') {
-      const traffic = trafficData.backend_to_frontend?.find(
-        t => (t.source_ip === sourceIp || t.target_ip === targetIp)
-      )
-      return traffic ? Math.min(traffic.data_count / 10, 5) : 1
+      const trafficList = trafficData.backend_to_frontend
+      if (Array.isArray(trafficList)) {
+        const traffic = trafficList.find(
+          t => (t.source_ip === sourceIp || t.target_ip === targetIp)
+        )
+        return traffic ? Math.max((traffic.data_count / maxTraffic) * 15, 1) : 1
+      }
     }
     return 1
   }
@@ -528,24 +433,24 @@ const updateChart = () => {
       name: collector.name,
       value: collector.online ? 10 : 5,
       itemStyle: {
-        color: collector.online ? '#FF0000' : '#CCCCCC'  /* 红色 */
+        color: collector.online ? 'rgba(255, 100, 100, 0.6)' : 'rgba(200, 200, 200, 0.4)'  /* 淡红色 */
       },
       tooltip: {
-        formatter: `${collector.name}<br/>状态: ${collector.online ? '在线' : '离线'}<br/>IP: ${collector.ip}<br/>最后汇报: ${formatUTCTime(collector.lastReport)}`
+        formatter: `${collector.displayName}<br/>状态: ${collector.online ? '在线' : '离线'}<br/>IP: ${collector.ip}<br/>最后汇报: ${formatUTCTime(collector.lastReport)}`
       }
     })
   })
 
-  // Kafka层节点
+  // Kafka层节点 - 增大节点值以显示数据汇总
   kafkaServices.forEach((kafka, index) => {
     nodes.push({
       name: kafka.name,
-      value: kafka.online ? 15 : 8,
+      value: kafka.online ? 25 : 12,  // 增大节点值
       itemStyle: {
-        color: kafka.online ? '#FF8C00' : '#CCCCCC'  /* 橙色 */
+        color: kafka.online ? 'rgba(255, 180, 100, 0.6)' : 'rgba(200, 200, 200, 0.4)'  /* 淡橙色 */
       },
       tooltip: {
-        formatter: `${kafka.name}<br/>状态: ${kafka.online ? '在线' : '离线'}<br/>IP: ${kafka.ip}<br/>最后汇报: ${formatUTCTime(kafka.lastReport)}`
+        formatter: `${kafka.displayName}<br/>状态: ${kafka.online ? '在线' : '离线'}<br/>IP: ${kafka.ip}<br/>最后汇报: ${formatUTCTime(kafka.lastReport)}`
       }
     })
   })
@@ -554,12 +459,12 @@ const updateChart = () => {
   if (databaseService) {
     nodes.push({
       name: databaseService.name,
-      value: databaseService.online ? 12 : 6,
+      value: databaseService.online ? 20 : 10,  // 增大节点值
       itemStyle: {
-        color: databaseService.online ? '#FFD700' : '#CCCCCC'  // 黄色
+        color: databaseService.online ? 'rgba(255, 220, 100, 0.6)' : 'rgba(200, 200, 200, 0.4)'  // 淡黄色
       },
       tooltip: {
-        formatter: `${databaseService.name}<br/>状态: ${databaseService.online ? '在线' : '离线'}<br/>IP: ${databaseService.ip}<br/>最后汇报: ${formatUTCTime(databaseService.lastReport)}`
+        formatter: `${databaseService.displayName}<br/>状态: ${databaseService.online ? '在线' : '离线'}<br/>IP: ${databaseService.ip}<br/>最后汇报: ${formatUTCTime(databaseService.lastReport)}`
       }
     })
   }
@@ -568,12 +473,12 @@ const updateChart = () => {
   redisServices.forEach((redis, index) => {
     nodes.push({
       name: redis.name,
-      value: redis.online ? 12 : 6,
+      value: redis.online ? 18 : 9,  // 增大节点值
       itemStyle: {
-        color: redis.online ? '#00CED1' : '#CCCCCC'  // 深青色
+        color: redis.online ? 'rgba(100, 200, 200, 0.6)' : 'rgba(200, 200, 200, 0.4)'  // 淡青色
       },
       tooltip: {
-        formatter: `${redis.name}<br/>状态: ${redis.online ? '在线' : '离线'}<br/>IP: ${redis.ip}<br/>最后汇报: ${formatUTCTime(redis.lastReport)}`
+        formatter: `${redis.displayName}<br/>状态: ${redis.online ? '在线' : '离线'}<br/>IP: ${redis.ip}<br/>最后汇报: ${formatUTCTime(redis.lastReport)}`
       }
     })
   })
@@ -582,12 +487,12 @@ const updateChart = () => {
   backendServices.forEach((backend, index) => {
     nodes.push({
       name: backend.name,
-      value: backend.online ? 12 : 6,
+      value: backend.online ? 18 : 9,  // 增大节点值
       itemStyle: {
-        color: backend.online ? '#00FF00' : '#CCCCCC'  // 绿色
+        color: backend.online ? 'rgba(100, 220, 100, 0.6)' : 'rgba(200, 200, 200, 0.4)'  // 淡绿色
       },
       tooltip: {
-        formatter: `${backend.name}<br/>状态: ${backend.online ? '在线' : '离线'}<br/>IP: ${backend.ip}<br/>最后汇报: ${formatUTCTime(backend.lastReport)}`
+        formatter: `${backend.displayName}<br/>状态: ${backend.online ? '在线' : '离线'}<br/>IP: ${backend.ip}<br/>最后汇报: ${formatUTCTime(backend.lastReport)}`
       }
     })
   })
@@ -596,33 +501,34 @@ const updateChart = () => {
   frontendServices.forEach((frontend, index) => {
     nodes.push({
       name: frontend.name,
-      value: frontend.online ? 12 : 6,
+      value: frontend.online ? 15 : 8,  // 适中节点值
       itemStyle: {
-        color: frontend.online ? '#9370DB' : '#CCCCCC'  /* 紫色 */
+        color: frontend.online ? 'rgba(180, 150, 220, 0.6)' : 'rgba(200, 200, 200, 0.4)'  /* 淡紫色 */
       },
       tooltip: {
-        formatter: `${frontend.name}<br/>状态: ${frontend.online ? '在线' : '离线'}<br/>IP: ${frontend.ip}<br/>最后汇报: ${formatUTCTime(frontend.lastReport)}`
+        formatter: `${frontend.displayName}<br/>状态: ${frontend.online ? '在线' : '离线'}<br/>IP: ${frontend.ip}<br/>最后汇报: ${formatUTCTime(frontend.lastReport)}`
       }
     })
   })
 
-  // 创建连接：数据采集 -> Kafka
+  // 创建连接：数据采集 -> Kafka (基于实际流量数据)
   const kafkaStartIndex = dataCollectors.length
   
   dataCollectors.forEach((collector, collectorIndex) => {
     kafkaServices.forEach((kafka, kafkaIndex) => {
       const sourceIndex = collectorIndex
       const targetIndex = kafkaStartIndex + kafkaIndex
-      const baseValue = getTrafficWeight('data_collection', 'kafka', collector.ip, kafka.ip)
-      const value = (collector.online && kafka.online) ? baseValue : baseValue * 0.2
+      const value = (collector.online && kafka.online) ? 
+        getTrafficWeight('data_collection', 'kafka', collector.ip, kafka.ip) : 
+        getTrafficWeight('data_collection', 'kafka', collector.ip, kafka.ip) * 0.2
       
       links.push({
         source: sourceIndex,
         target: targetIndex,
         value: value,
         lineStyle: {
-          color: (collector.online && kafka.online) ? '#FF0000' : '#CCCCCC',
-          opacity: (collector.online && kafka.online) ? 0.8 : 0.3
+          color: (collector.online && kafka.online) ? 'rgba(255, 100, 100, 0.4)' : 'rgba(200, 200, 200, 0.2)',
+          opacity: (collector.online && kafka.online) ? 0.5 : 0.2
         }
       })
     })
@@ -633,61 +539,64 @@ const updateChart = () => {
   const redisStartIndex = databaseStartIndex + (databaseService ? 1 : 0)
   const backendStartIndex = redisStartIndex + redisServices.length
   
-  // 创建连接：Kafka -> 数据库
+  // 创建连接：Kafka -> 数据库 (基于实际流量数据，应该是最宽的连接)
   kafkaServices.forEach((kafka, kafkaIndex) => {
     if (databaseService) {
       const sourceIndex = kafkaStartIndex + kafkaIndex
       const targetIndex = databaseStartIndex  // 数据库在第三层
-      const baseValue = getTrafficWeight('kafka', 'database', kafka.ip, databaseService.ip)
-      const value = (kafka.online && databaseService.online) ? baseValue : baseValue * 0.2
+      const value = (kafka.online && databaseService.online) ? 
+        getTrafficWeight('kafka', 'database', kafka.ip, databaseService.ip) : 
+        getTrafficWeight('kafka', 'database', kafka.ip, databaseService.ip) * 0.2
       
       links.push({
         source: sourceIndex,
         target: targetIndex,
         value: value,
         lineStyle: {
-          color: (kafka.online && databaseService.online) ? '#FF8C00' : '#CCCCCC',
-          opacity: (kafka.online && databaseService.online) ? 0.8 : 0.3
+          color: (kafka.online && databaseService.online) ? 'rgba(255, 180, 100, 0.4)' : 'rgba(200, 200, 200, 0.2)',
+          opacity: (kafka.online && databaseService.online) ? 0.6 : 0.2  // Kafka连接透明度稍高
         }
       })
     }
   })
 
-  // 创建连接：数据库 -> 后端
+  // 创建连接：数据库 -> 后端 (基于实际流量数据)
   if (databaseService) {
     backendServices.forEach((backend, backendIndex) => {
       const sourceIndex = databaseStartIndex
       const targetIndex = backendStartIndex + backendIndex
-      const baseValue = getTrafficWeight('database', 'backend', databaseService.ip, backend.ip)
-      const value = (databaseService.online && backend.online) ? baseValue : baseValue * 0.2
+      const value = (databaseService.online && backend.online) ? 
+        getTrafficWeight('database', 'backend', databaseService.ip, backend.ip) : 
+        getTrafficWeight('database', 'backend', databaseService.ip, backend.ip) * 0.2
       
       links.push({
         source: sourceIndex,
         target: targetIndex,
         value: value,
         lineStyle: {
-          color: (databaseService.online && backend.online) ? '#FFD700' : '#CCCCCC',
-          opacity: (databaseService.online && backend.online) ? 0.8 : 0.3
+          color: (databaseService.online && backend.online) ? 'rgba(255, 220, 100, 0.4)' : 'rgba(200, 200, 200, 0.2)',
+          opacity: (databaseService.online && backend.online) ? 0.5 : 0.2
         }
       })
     })
   }
 
-  // 创建连接：Redis -> 后端
+  // 创建连接：Redis -> 后端 (基于实际流量数据)
   redisServices.forEach((redis, redisIndex) => {
     backendServices.forEach((backend, backendIndex) => {
       const sourceIndex = redisStartIndex + redisIndex
       const targetIndex = backendStartIndex + backendIndex
-      const baseValue = getTrafficWeight('redis', 'backend', redis.ip, backend.ip)
-      const value = (redis.online && backend.online) ? baseValue : baseValue * 0.2
+      const value = (redis.online && backend.online) ? 
+        getTrafficWeight('redis', 'backend', redis.ip, backend.ip) : 
+        getTrafficWeight('redis', 'backend', redis.ip, backend.ip) * 0.2
       
       links.push({
         source: sourceIndex,
         target: targetIndex,
         value: value,
         lineStyle: {
-          color: (redis.online && backend.online) ? '#00CED1' : '#CCCCCC',
-          opacity: (redis.online && backend.online) ? 0.8 : 0.3
+          color: (redis.online && backend.online) ? 'rgba(100, 200, 200, 0.4)' : 'rgba(200, 200, 200, 0.2)',
+          opacity: (redis.online && backend.online) ? 0.5 : 0.2
         }
       })
     })
@@ -704,16 +613,17 @@ const updateChart = () => {
       frontendServices.forEach((frontend, frontendIndex) => {
         const sourceIndex = backendStartIndex + backendIndex
         const targetIndex = frontendStartIndex + frontendIndex
-        const baseValue = getTrafficWeight('backend', 'frontend', backend.ip, frontend.ip)
-        const value = (backend.online && frontend.online) ? baseValue : baseValue * 0.2
+        const value = (backend.online && frontend.online) ? 
+          getTrafficWeight('backend', 'frontend', backend.ip, frontend.ip) : 
+          getTrafficWeight('backend', 'frontend', backend.ip, frontend.ip) * 0.2
         
         links.push({
           source: sourceIndex,
           target: targetIndex,
           value: value,
           lineStyle: {
-            color: (backend.online && frontend.online) ? '#9370DB' : '#CCCCCC',
-            opacity: (backend.online && frontend.online) ? 0.8 : 0.3
+            color: (backend.online && frontend.online) ? 'rgba(180, 150, 220, 0.4)' : 'rgba(200, 200, 200, 0.2)',
+            opacity: (backend.online && frontend.online) ? 0.5 : 0.2
           }
         })
       })
@@ -746,56 +656,56 @@ const updateChart = () => {
         levels: [{
           depth: 0,
           itemStyle: {
-            color: '#FF0000'  /* 红色 - 数据采集 */
+            color: 'rgba(255, 100, 100, 0.6)'  /* 淡红色 - 数据采集 */
           },
           lineStyle: {
             color: 'source',
-            opacity: 0.6
+            opacity: 0.4
           }
         }, {
           depth: 1,
           itemStyle: {
-            color: '#FF8C00'  /* 橙色 - Kafka */
+            color: 'rgba(255, 180, 100, 0.6)'  /* 淡橙色 - Kafka */
           },
           lineStyle: {
             color: 'source',
-            opacity: 0.6
+            opacity: 0.4
           }
         }, {
           depth: 2,
           itemStyle: {
-            color: '#FFD700'  /* 黄色 - 数据库 */
+            color: 'rgba(255, 220, 100, 0.6)'  /* 淡黄色 - 数据库 */
           },
           lineStyle: {
             color: 'source',
-            opacity: 0.6
+            opacity: 0.4
           }
         }, {
           depth: 3,
           itemStyle: {
-            color: '#00CED1'  /* 深青色 - Redis */
+            color: 'rgba(100, 200, 200, 0.6)'  /* 淡青色 - Redis */
           },
           lineStyle: {
             color: 'source',
-            opacity: 0.6
+            opacity: 0.4
           }
         }, {
           depth: 4,
           itemStyle: {
-            color: '#00FF00'  /* 绿色 - 后端 */
+            color: 'rgba(100, 220, 100, 0.6)'  /* 淡绿色 - 后端 */
           },
           lineStyle: {
             color: 'source',
-            opacity: 0.6
+            opacity: 0.4
           }
         }, {
           depth: 5,
           itemStyle: {
-            color: '#9370DB'  /* 紫色 - 前端 */
+            color: 'rgba(180, 150, 220, 0.6)'  /* 淡紫色 - 前端 */
           },
           lineStyle: {
             color: 'source',
-            opacity: 0.6
+            opacity: 0.4
           }
         }],
         lineStyle: {
@@ -814,30 +724,39 @@ const updateChart = () => {
     ]
   }
 
-  chart.value.setOption(option, true)
+  try {
+    // 使用 notMerge: false 和 lazyUpdate: true 来避免主过程调用错误
+    chart.value.setOption(option, {
+      notMerge: false,
+      lazyUpdate: true
+    })
+  } catch (error) {
+    // 图表更新失败，静默处理
+  }
 }
 
 // 初始化图表
 const initChart = () => {
   if (chartRef.value) {
-    chart.value = echarts.init(chartRef.value)
-    
-    // 监听窗口大小变化
-    window.addEventListener('resize', () => {
-      chart.value?.resize()
-    })
+    try {
+      chart.value = echarts.init(chartRef.value, null, {
+        renderer: 'canvas'
+      })
+      
+      // 监听窗口大小变化
+      window.addEventListener('resize', () => {
+        if (chart.value && !chart.value.isDisposed()) {
+          chart.value.resize()
+        }
+      })
+    } catch (error) {
+      // 图表初始化失败，静默处理
+    }
   }
 }
 
 onMounted(async () => {
   await nextTick()
-  initChart()
-  
-  // 初始化心跳服务状态
-  updateHeartbeatStatus()
-  
-  // 获取当前IP地址
-  await refreshIP()
   
   // 设置默认时间范围（最近5分钟）
   const endTime = new Date()
@@ -847,28 +766,25 @@ onMounted(async () => {
     endTime.toISOString().slice(0, 19).replace('T', ' ')
   ]
   
-  fetchSystemStatus()
+  // 先初始化图表
+  initChart()
+  
+  // 等待多个渲染周期后再获取数据，确保图表完全初始化
+  await nextTick()
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  // 启动心跳服务（静默启动，不显示UI）
+  try {
+    heartbeatService.start()
+  } catch (error) {
+    // 心跳服务启动失败，静默处理
+  }
+  
+  // 获取系统状态
+  await fetchSystemStatus()
   
   // 设置定时刷新
   setInterval(fetchSystemStatus, 30000) // 30秒刷新一次
-  
-  // 定时更新心跳服务状态
-  setInterval(updateHeartbeatStatus, 5000) // 5秒更新一次状态
-  
-  // 定时刷新IP地址（每分钟）
-  setInterval(refreshIP, 60000) // 60秒刷新一次IP
-  
-  // 监听心跳服务的成功发送
-  const originalSendHeartbeat = heartbeatService.sendHeartbeat.bind(heartbeatService)
-  heartbeatService.sendHeartbeat = async function() {
-    const result = await originalSendHeartbeat()
-    if (result) {
-      lastHeartbeatTime.value = new Date().toLocaleString('zh-CN')
-      // 每次发送成功后更新显示的IP
-      currentIP.value = await heartbeatService.getCurrentIP()
-    }
-    return result
-  }
 })
 </script>
 
@@ -878,84 +794,6 @@ onMounted(async () => {
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.heartbeat-status-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.card-header h3 {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.heartbeat-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.heartbeat-info {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.info-item .label {
-  font-weight: 500;
-  opacity: 0.9;
-}
-
-.info-item span:not(.label) {
-  font-weight: 600;
-}
-
-/* 修改 Element Plus 组件样式以适配深色背景 */
-.heartbeat-status-card :deep(.el-switch__label) {
-  color: white;
-}
-
-.heartbeat-status-card :deep(.el-switch.is-checked .el-switch__core) {
-  background-color: #67c23a;
-  border-color: #67c23a;
-}
-
-.heartbeat-status-card :deep(.el-tag) {
-  background-color: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
-  color: white;
-}
-
-.heartbeat-status-card :deep(.el-tag.el-tag--success) {
-  background-color: rgba(103, 194, 58, 0.8);
-  border-color: rgba(103, 194, 58, 0.9);
-}
-
-.heartbeat-status-card :deep(.el-tag.el-tag--danger) {
-  background-color: rgba(245, 108, 108, 0.8);
-  border-color: rgba(245, 108, 108, 0.9);
 }
 
 .page-header {
@@ -1046,27 +884,27 @@ onMounted(async () => {
 }
 
 .legend-icon.data-collection {
-  background: #FF0000;  /* 红色 */
+  background: rgba(255, 100, 100, 0.6);  /* 淡红色 */
 }
 
 .legend-icon.kafka {
-  background: #FF8C00;  /* 橙色 */
+  background: rgba(255, 180, 100, 0.6);  /* 淡橙色 */
 }
 
 .legend-icon.database {
-  background: #FFD700;  /* 黄色 */
+  background: rgba(255, 220, 100, 0.6);  /* 淡黄色 */
 }
 
 .legend-icon.redis {
-  background: #00CED1;  /* 深青色 */
+  background: rgba(100, 200, 200, 0.6);  /* 淡青色 */
 }
 
 .legend-icon.backend {
-  background: #00FF00;  /* 绿色 */
+  background: rgba(100, 220, 100, 0.6);  /* 淡绿色 */
 }
 
 .legend-icon.frontend {
-  background: #9370DB;  /* 紫色 */
+  background: rgba(180, 150, 220, 0.6);  /* 淡紫色 */
 }
 
 .legend-icon.online {

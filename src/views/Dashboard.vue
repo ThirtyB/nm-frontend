@@ -280,7 +280,7 @@
                     <h3>{{ dimension.name }}使用率TOP{{ topCount }}</h3>
                     <el-tag type="info" size="small">{{ dimension.unit }}</el-tag>
                   </div>
-                  <div :ref="(el) => { usageTopChartRefs[index] = el; console.log(`设置图表${index}的引用:`, el); }" class="usage-top-chart"></div>
+                  <div :ref="(el) => { usageTopChartRefs[index] = el; }" class="usage-top-chart"></div>
                 </div>
               </el-col>
             </el-row>
@@ -587,7 +587,6 @@ const fetchAlerts = async () => {
       alerts.value.total_warning_count = alerts.value.alerts.filter(a => a.alert_level === 'warning').length
     }
   } catch (error) {
-    console.error('获取告警信息失败:', error)
     if (error.message && error.message.includes('start_time')) {
       ElMessage.error('请选择告警查询时间范围')
     } else {
@@ -649,7 +648,6 @@ const fetchScoringData = async () => {
       try {
         scoringSummary.value = JSON.parse(summaryResponse.data)
       } catch (e) {
-        console.warn('评分汇总数据解析失败:', e)
         scoringSummary.value = {
           total_machines: machineScores.value.length,
           average_score: 0,
@@ -696,7 +694,6 @@ const fetchScoringData = async () => {
     })
     
   } catch (error) {
-    console.error('获取评分数据失败:', error)
     ElMessage.error('获取评分数据失败')
   } finally {
     scoringLoading.value = false
@@ -716,7 +713,6 @@ const drawRadarChart = () => {
   // 检查容器尺寸是否有效
   const container = canvas.parentElement
   if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
-    console.warn('雷达图容器尺寸无效，延迟重绘')
     setTimeout(() => drawRadarChart(), 200)
     return
   }
@@ -727,7 +723,6 @@ const drawRadarChart = () => {
   
   // 如果尺寸太小，不绘制
   if (size < 100) {
-    console.warn('雷达图容器尺寸过小，跳过绘制')
     return
   }
   
@@ -924,8 +919,6 @@ const fetchUsageTopData = async () => {
       dimensions: ["CPU", "内存", "磁盘", "网络", "Swap"]
     })
 
-    console.log('使用率TOP数据:', response.data)
-    
     // 处理数据，转换为数组格式便于遍历
     const dimensions = response.data.dimensions || {}
     usageTopData.value = Object.keys(dimensions).map(key => ({
@@ -936,18 +929,15 @@ const fetchUsageTopData = async () => {
 
     // 初始化图表引用数组
     usageTopChartRefs.value = new Array(usageTopData.value.length).fill(null)
-    console.log('初始化图表引用数组，长度:', usageTopData.value.length)
 
     // 确保DOM渲染完成后再绘制图表
     nextTick(() => {
       setTimeout(() => {
-        console.log('开始绘制图表，数据:', usageTopData.value)
         drawUsageTopCharts()
       }, 200) // 增加延迟时间确保DOM完全渲染
     })
 
   } catch (error) {
-    console.error('获取使用率TOP数据失败:', error)
     ElMessage.error('获取使用率TOP数据失败')
   } finally {
     usageTopLoading.value = false
@@ -961,24 +951,17 @@ const refreshUsageTop = () => {
 
 // 绘制使用率TOP折线图
 const drawUsageTopCharts = () => {
-  console.log('开始绘制图表，数据:', usageTopData.value)
-  console.log('图表引用数组:', usageTopChartRefs.value)
-  
   // 确保图表引用数组长度正确
   if (usageTopChartRefs.value.length !== usageTopData.value.length) {
     usageTopChartRefs.value = new Array(usageTopData.value.length).fill(null)
   }
 
   usageTopData.value.forEach((dimension, dimIndex) => {
-    console.log(`绘制第${dimIndex}个维度图表:`, dimension.name)
-    
     // 使用更长的延迟确保DOM元素已渲染
     setTimeout(() => {
       const chartRef = usageTopChartRefs.value[dimIndex]
-      console.log(`图表${dimIndex}的DOM元素:`, chartRef)
       
       if (!chartRef) {
-        console.warn(`图表${dimIndex}的DOM元素不存在，尝试重新获取`)
         // 尝试重新获取DOM元素
         setTimeout(() => {
           drawSingleChart(dimension, dimIndex)
@@ -996,7 +979,6 @@ const drawSingleChart = (dimension, dimIndex) => {
   const chartRef = usageTopChartRefs.value[dimIndex]
   
   if (!chartRef) {
-    console.error(`图表${dimIndex}的DOM元素仍然不存在`)
     return
   }
 
@@ -1056,9 +1038,6 @@ const drawSingleChart = (dimension, dimIndex) => {
     
     // 按时间排序
     averagedData.sort((a, b) => a.timestamp - b.timestamp)
-    
-    console.log(`IP ${item.ip} 原始数据点: ${item.time_series.length}, 聚合后数据点: ${averagedData.length}`)
-
     return {
       name: item.ip,
       color: color,
@@ -1183,7 +1162,6 @@ const drawSingleChart = (dimension, dimIndex) => {
     animationEasing: 'cubicOut'
   }
 
-  console.log(`设置图表${dimIndex}的配置，数据系列数量:`, series.length)
   chart.setOption(option)
 
   // 监听窗口大小变化
@@ -1194,8 +1172,6 @@ const drawSingleChart = (dimension, dimIndex) => {
   
   // 保存resize处理器引用，便于清理
   chart._resizeHandler = resizeHandler
-  
-  console.log(`图表${dimIndex}绘制完成`)
 }
 
 // 跳转到节点详情

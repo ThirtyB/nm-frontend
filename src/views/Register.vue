@@ -133,7 +133,7 @@ const handleRegister = async () => {
       ElMessage.error(result.message)
     }
   } catch (error) {
-    console.error('注册验证失败:', error)
+    // 注册验证失败，静默处理
   } finally {
     loading.value = false
   }

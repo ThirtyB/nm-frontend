@@ -12,7 +12,6 @@ export const useUserStore = defineStore('user', () => {
       const response = await api.get('/users/')
       users.value = response.data
     } catch (error) {
-      console.error('获取用户列表失败:', error)
       throw error
     } finally {
       loading.value = false

@@ -105,7 +105,7 @@ const handleLogin = async () => {
       ElMessage.error(result.message)
     }
   } catch (error) {
-    console.error('登录验证失败:', error)
+    // 登录验证失败，静默处理
   } finally {
     loading.value = false
   }
