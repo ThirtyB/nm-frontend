@@ -86,6 +86,7 @@ import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import api from '@/utils/api'
 import heartbeatService from '@/services/heartbeat'
+import { TIME_SHORTCUTS, getDefaultTimeRangeStrings } from '@/utils/timeConfig'
 
 const chartRef = ref(null)
 const chart = ref(null)
@@ -95,53 +96,7 @@ const lastUpdateTime = ref(new Date())
 const timeRange = ref([])
 
 // 时间快捷选项
-const timeShortcuts = [
-  {
-    text: '最近5分钟',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 5 * 60 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近15分钟',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 15 * 60 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近30分钟',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 30 * 60 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近1小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 60 * 60 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近2小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 2 * 60 * 60 * 1000)
-      return [start, end]
-    },
-  }
-]
+const timeShortcuts = TIME_SHORTCUTS
 
 // 处理时间范围变化
 const handleTimeChange = (value) => {
@@ -161,12 +116,10 @@ const fetchSystemStatus = async () => {
       startTime = new Date(timeRange.value[0])
       endTime = new Date(timeRange.value[1])
     } else {
-      endTime = new Date()
-      startTime = new Date(endTime.getTime() - 5 * 60 * 1000) // 默认最近5分钟
-      timeRange.value = [
-        startTime.toISOString().slice(0, 19).replace('T', ' '),
-        endTime.toISOString().slice(0, 19).replace('T', ' ')
-      ]
+      timeRange.value = getDefaultTimeRangeStrings()
+      const [startStr, endStr] = timeRange.value
+      startTime = new Date(startStr)
+      endTime = new Date(endStr)
     }
 
     // 确保时间戳是UTC时间戳
@@ -758,13 +711,8 @@ const initChart = () => {
 onMounted(async () => {
   await nextTick()
   
-  // 设置默认时间范围（最近5分钟）
-  const endTime = new Date()
-  const startTime = new Date(endTime.getTime() - 5 * 60 * 1000)
-  timeRange.value = [
-    startTime.toISOString().slice(0, 19).replace('T', ' '),
-    endTime.toISOString().slice(0, 19).replace('T', ' ')
-  ]
+  // 设置默认时间范围（1小时）
+  timeRange.value = getDefaultTimeRangeStrings()
   
   // 先初始化图表
   initChart()

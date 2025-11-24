@@ -121,6 +121,7 @@ import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import api from '@/utils/api'
 import { getMachineScores } from '@/utils/scoringApi'
+import { TIME_SHORTCUTS, getDefaultTimeRangeStrings } from '@/utils/timeConfig'
 
 const router = useRouter()
 const loading = ref(false)
@@ -133,44 +134,7 @@ const machineScores = ref([])
 const scoresMap = ref({}) // IP到评分的映射
 
 // 时间快捷选项
-const timeShortcuts = [
-  {
-    text: '最近1小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近6小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 6)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近24小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近7天',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-      return [start, end]
-    },
-  },
-]
+const timeShortcuts = TIME_SHORTCUTS
 
 
 
@@ -296,15 +260,9 @@ const fetchScores = async () => {
   }
 }
 
-// 初始化时间范围（默认最近24小时）
+// 初始化时间范围（默认1小时）
 onMounted(() => {
-  const end = new Date()
-  const start = new Date()
-  start.setTime(start.getTime() - 3600 * 1000 * 24)
-  timeRange.value = [
-    start.toISOString().slice(0, 19).replace('T', ' '),
-    end.toISOString().slice(0, 19).replace('T', ' ')
-  ]
+  timeRange.value = getDefaultTimeRangeStrings()
   fetchActiveIPs()
   // fetchScores会在fetchActiveIPs完成后自动调用
 })

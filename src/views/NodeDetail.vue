@@ -537,6 +537,7 @@ import * as echarts from 'echarts'
 import api from '@/utils/api'
 import { getIpAlerts } from '@/utils/alertApi'
 import { getMachineScore } from '@/utils/scoringApi'
+import { TIME_SHORTCUTS, getDefaultTimeRangeStrings } from '@/utils/timeConfig'
 
 const router = useRouter()
 const route = useRoute()
@@ -573,44 +574,7 @@ let diskChartInstance = null
 let networkChartInstance = null
 
 // 时间快捷选项
-const timeShortcuts = [
-  {
-    text: '最近1小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近6小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 6)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近24小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近7天',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-      return [start, end]
-    },
-  },
-]
+const timeShortcuts = TIME_SHORTCUTS
 
 // 计算最新指标
 const latestMetrics = computed(() => {
@@ -782,6 +746,8 @@ const fetchNodeMetrics = async () => {
 
 // 渲染图表
 const renderCharts = () => {
+  if (!metricsData.value.length) return
+  
   const times = metricsData.value.map(item => formatTimestamp(item.ts))
   const cpuData = metricsData.value.map(item => 
     ((item.cpu_usr || 0) + (item.cpu_sys || 0) + (item.cpu_iow || 0)).toFixed(2)
@@ -797,49 +763,109 @@ const renderCharts = () => {
 
   // CPU图表
   if (cpuChart.value) {
+    if (cpuChartInstance) {
+      cpuChartInstance.dispose()
+    }
     cpuChartInstance = echarts.init(cpuChart.value)
     cpuChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: times, axisLabel: { rotate: 45 } },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { 
+        type: 'category', 
+        data: times, 
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
       yAxis: { type: 'value', name: '使用率(%)', max: 100 },
-      series: [{ name: 'CPU使用率', type: 'line', data: cpuData, smooth: true }]
+      series: [{ 
+        name: 'CPU使用率', 
+        type: 'line', 
+        data: cpuData, 
+        smooth: true,
+        lineStyle: { width: 2 },
+        itemStyle: { radius: [4, 4, 0, 0] }
+      }]
     })
   }
 
   // 内存图表
   if (memoryChart.value) {
+    if (memoryChartInstance) {
+      memoryChartInstance.dispose()
+    }
     memoryChartInstance = echarts.init(memoryChart.value)
     memoryChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: times, axisLabel: { rotate: 45 } },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { 
+        type: 'category', 
+        data: times, 
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
       yAxis: { type: 'value', name: '使用率(%)', max: 100 },
-      series: [{ name: '内存使用率', type: 'line', data: memoryData, smooth: true }]
+      series: [{ 
+        name: '内存使用率', 
+        type: 'line', 
+        data: memoryData, 
+        smooth: true,
+        lineStyle: { width: 2 },
+        itemStyle: { radius: [4, 4, 0, 0] }
+      }]
     })
   }
 
   // 磁盘图表
   if (diskChart.value) {
+    if (diskChartInstance) {
+      diskChartInstance.dispose()
+    }
     diskChartInstance = echarts.init(diskChart.value)
     diskChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: times, axisLabel: { rotate: 45 } },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { 
+        type: 'category', 
+        data: times, 
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
       yAxis: { type: 'value', name: '使用率(%)', max: 100 },
-      series: [{ name: '磁盘使用率', type: 'line', data: diskData, smooth: true }]
+      series: [{ 
+        name: '磁盘使用率', 
+        type: 'line', 
+        data: diskData, 
+        smooth: true,
+        lineStyle: { width: 2 },
+        itemStyle: { radius: [4, 4, 0, 0] }
+      }]
     })
   }
 
   // 网络图表
   if (networkChart.value) {
+    if (networkChartInstance) {
+      networkChartInstance.dispose()
+    }
     networkChartInstance = echarts.init(networkChart.value)
     networkChartInstance.setOption({
       title: { text: '', textStyle: { fontSize: 14 } },
       tooltip: { trigger: 'axis' },
-      xAxis: { type: 'category', data: times, axisLabel: { rotate: 45 } },
+      grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+      xAxis: { 
+        type: 'category', 
+        data: times, 
+        axisLabel: { rotate: 45, fontSize: 10 }
+      },
       yAxis: { type: 'value', name: '网络速率(KB/s)' },
-      series: [{ name: '网络速率', type: 'line', data: networkData, smooth: true }]
+      series: [{ 
+        name: '网络速率', 
+        type: 'line', 
+        data: networkData, 
+        smooth: true,
+        lineStyle: { width: 2 },
+        itemStyle: { radius: [4, 4, 0, 0] }
+      }]
     })
   }
 }
@@ -1036,19 +1062,23 @@ onMounted(() => {
   if (route.query.startTime && route.query.endTime) {
     const startTime = new Date(parseInt(route.query.startTime) * 1000)
     const endTime = new Date(parseInt(route.query.endTime) * 1000)
+    // 使用本地时间格式，避免UTC时间转换问题
+    const formatLocalTime = (date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const hours = String(date.getHours()).padStart(2, '0')
+      const minutes = String(date.getMinutes()).padStart(2, '0')
+      const seconds = String(date.getSeconds()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+    }
     timeRange.value = [
-      startTime.toISOString().slice(0, 19).replace('T', ' '),
-      endTime.toISOString().slice(0, 19).replace('T', ' ')
+      formatLocalTime(startTime),
+      formatLocalTime(endTime)
     ]
   } else {
-    // 默认最近24小时
-    const end = new Date()
-    const start = new Date()
-    start.setTime(start.getTime() - 3600 * 1000 * 24)
-    timeRange.value = [
-      start.toISOString().slice(0, 19).replace('T', ' '),
-      end.toISOString().slice(0, 19).replace('T', ' ')
-    ]
+    // 默认1小时
+    timeRange.value = getDefaultTimeRangeStrings()
   }
   
   fetchNodeMetrics()

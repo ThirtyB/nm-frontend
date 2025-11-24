@@ -248,20 +248,20 @@
       <el-col :span="24">
         <el-card>
           <template #header>
-            <div class="card-header">
+            <div class="usage-top-header">
               <div class="header-title">
                 <el-icon color="#67C23C" size="20"><DataAnalysis /></el-icon>
                 <span>五维使用率TOP趋势图</span>
               </div>
               <div class="usage-top-controls">
-                <span style="margin-right: 8px; color: #606266;">TOP数量：</span>
+                <span class="control-label">TOP数量：</span>
                 <el-input-number 
                   v-model="topCount" 
                   :min="1" 
                   :max="20" 
                   :step="1"
                   size="small"
-                  style="width: 120px; margin-right: 12px;"
+                  style="width: 120px;"
                   @change="refreshUsageTop"
                 />
               </div>
@@ -419,6 +419,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getAlerts } from '@/utils/alertApi'
 import { getMachineScores, getScoringSummary } from '@/utils/scoringApi'
 import { getUsageTop } from '@/utils/usageTopApi'
+import { TIME_SHORTCUTS, getDefaultTimeRangeStrings } from '@/utils/timeConfig'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -453,48 +454,11 @@ const resizeTimer = ref(null)
 // 使用率TOP相关数据
 const usageTopData = ref([])
 const usageTopLoading = ref(false)
-const topCount = ref(10)
+const topCount = ref(4)
 const usageTopChartRefs = ref([])
 
 // 告警时间快捷选项
-const alertTimeShortcuts = [
-  {
-    text: '最近1小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近6小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 6)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近24小时',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24)
-      return [start, end]
-    },
-  },
-  {
-    text: '最近7天',
-    value: () => {
-      const end = new Date()
-      const start = new Date()
-      start.setTime(start.getTime() - 3600 * 1000 * 24 * 7)
-      return [start, end]
-    },
-  },
-]
+const alertTimeShortcuts = TIME_SHORTCUTS
 
 // 获取告警级别类型
 const getAlertLevelType = (level) => {
@@ -1198,26 +1162,8 @@ const handleResize = () => {
 
 // 组件挂载时获取数据
 onMounted(() => {
-  // 设置默认告警时间范围为最近1小时
-  const end = new Date()
-  const start = new Date()
-  start.setTime(start.getTime() - 3600 * 1000 * 1)
-  
-  // 使用本地时间格式，避免UTC时间转换问题
-  const formatLocalTime = (date) => {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    const seconds = String(date.getSeconds()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-  }
-  
-  alertTimeRange.value = [
-    formatLocalTime(start),
-    formatLocalTime(end)
-  ]
+  // 设置默认告警时间范围为1小时
+  alertTimeRange.value = getDefaultTimeRangeStrings()
   
   // 并行获取告警、评分和使用率TOP数据
   fetchAlerts()
@@ -1669,10 +1615,25 @@ onUnmounted(() => {
 }
 
 /* 使用率TOP图表样式 */
+.usage-top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 16px;
+}
+
 .usage-top-controls {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.control-label {
+  color: #606266;
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .usage-top-charts {
