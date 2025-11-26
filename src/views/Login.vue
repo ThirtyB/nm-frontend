@@ -99,13 +99,30 @@ const handleLogin = async () => {
     const result = await authStore.login(loginForm)
     
     if (result.success) {
-      ElMessage.success('登录成功')
-      router.push('/dashboard')
+      ElMessage({
+        message: '登录成功',
+        type: 'success',
+        duration: 2000
+      })
+      // 延迟跳转，让用户看到成功消息
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 500)
     } else {
-      ElMessage.error(result.message)
+      ElMessage({
+        message: result.message || '登录失败',
+        type: 'error',
+        duration: 5000, // 延长显示时间到5秒
+        showClose: true
+      })
     }
   } catch (error) {
-    // 登录验证失败，静默处理
+    ElMessage({
+      message: '请检查输入信息',
+      type: 'warning',
+      duration: 3000,
+      showClose: true
+    })
   } finally {
     loading.value = false
   }

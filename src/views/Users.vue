@@ -184,7 +184,13 @@ const validatePassword = (rule, value, callback) => {
 }
 
 const validatePhone = (rule, value, callback) => {
-  if (value && !/^1[3-9]\d{9}$/.test(value)) {
+  // 空值是允许的（手机号是可选字段）
+  if (!value || value.trim() === '') {
+    callback()
+    return
+  }
+  // 有值时验证格式
+  if (!/^1[3-9]\d{9}$/.test(value)) {
     callback(new Error('请输入正确的手机号格式'))
   } else {
     callback()
@@ -224,7 +230,8 @@ const showEditDialog = (user) => {
   userForm.id = user.id
   userForm.username = user.username
   userForm.password = ''
-  userForm.phone = user.phone || ''
+  // 确保phone字段正确处理，包括null、undefined和空字符串的情况
+  userForm.phone = user.phone !== null && user.phone !== undefined ? user.phone : ''
   userForm.user_type = user.user_type || 'user'
   userForm.is_active = user.is_active !== undefined ? user.is_active : true
 }
@@ -258,9 +265,9 @@ const handleSubmit = async () => {
       if (userForm.password) {
         updateData.password = userForm.password
       }
-      if (userForm.phone) {
-        updateData.phone = userForm.phone
-      }
+      // 明确发送phone字段，包括空字符串，以便后端能正确处理清空电话号码
+      // 去除首尾空格，如果为空则发送空字符串
+      updateData.phone = userForm.phone ? userForm.phone.trim() : ''
       result = await userStore.updateUser(userForm.id, updateData)
     } else {
       result = await userStore.createUser({

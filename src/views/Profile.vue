@@ -51,6 +51,7 @@
               </el-button>
             </div>
           </div>
+          <div class="form-tip">后续可通过手机号登录</div>
         </el-form-item>
 
         <el-form-item>
