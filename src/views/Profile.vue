@@ -51,7 +51,6 @@
               </el-button>
             </div>
           </div>
-          <div class="form-tip">手机号为可选项目，可用于找回密码等功能</div>
         </el-form-item>
 
         <el-form-item>
