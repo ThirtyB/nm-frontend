@@ -6,10 +6,11 @@ export const useUserStore = defineStore('user', () => {
   const users = ref([])
   const loading = ref(false)
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (includeInactive = false) => {
     loading.value = true
     try {
-      const response = await api.get('/users/')
+      const params = includeInactive ? { include_inactive: true } : {}
+      const response = await api.get('/users/', { params })
       users.value = response.data
     } catch (error) {
       throw error
@@ -48,7 +49,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const deleteUser = async (userId) => {
+  const deactivateUser = async (userId) => {
     try {
       await api.post(`/users/${userId}/deactivate`)
       // 更新本地用户状态为停用
@@ -61,6 +62,40 @@ export const useUserStore = defineStore('user', () => {
       return { 
         success: false, 
         message: error.response?.data?.detail || '停用用户失败' 
+      }
+    }
+  }
+
+  const activateUser = async (userId) => {
+    try {
+      await api.post(`/users/${userId}/activate`)
+      // 更新本地用户状态为激活
+      const index = users.value.findIndex(user => user.id === userId)
+      if (index !== -1) {
+        users.value[index].is_active = true
+      }
+      return { success: true }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '激活用户失败' 
+      }
+    }
+  }
+
+  const deleteUser = async (userId) => {
+    try {
+      await api.delete(`/users/${userId}`)
+      // 从本地用户列表中移除
+      const index = users.value.findIndex(user => user.id === userId)
+      if (index !== -1) {
+        users.value.splice(index, 1)
+      }
+      return { success: true }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.detail || '删除用户失败' 
       }
     }
   }
@@ -83,6 +118,8 @@ export const useUserStore = defineStore('user', () => {
     fetchUsers,
     createUser,
     updateUser,
+    deactivateUser,
+    activateUser,
     deleteUser,
     getUserById
   }

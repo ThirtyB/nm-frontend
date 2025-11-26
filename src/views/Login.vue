@@ -109,8 +109,13 @@ const handleLogin = async () => {
         router.push('/dashboard')
       }, 500)
     } else {
+      // 处理特定的错误消息
+      let errorMessage = result.message || '登录失败'
+      if (result.message === 'Account is disabled') {
+        errorMessage = '账户已被禁用，请联系管理员'
+      }
       ElMessage({
-        message: result.message || '登录失败',
+        message: errorMessage,
         type: 'error',
         duration: 5000, // 延长显示时间到5秒
         showClose: true

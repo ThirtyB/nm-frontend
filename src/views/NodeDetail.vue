@@ -1096,10 +1096,10 @@ const handleCurrentChange = (val) => {
 // 获取告警级别类型
 const getAlertLevelType = (level) => {
   const levelMap = {
-    'critical': 'danger',
-    'error': 'error',
-    'warning': 'warning',
-    'info': 'info'
+    'critical': 'custom',    // 严重 - 酒红色（自定义）
+    'error': 'danger',       // 错误 - 红色
+    'warning': 'warning',    // 警告 - 橙黄色
+    'info': 'success'        // 信息 - 绿色
   }
   return levelMap[level] || 'info'
 }
@@ -1609,5 +1609,23 @@ onUnmounted(() => {
 
 :deep(.el-table td) {
   padding: 8px 0;
+}
+/* 严重级别告警的酒红色样式 */
+:deep(.el-tag--custom) {
+  background-color: #722f37;
+  border-color: #722f37;
+  color: #ffffff;
+}
+
+:deep(.el-tag--custom.el-tag--dark) {
+  background-color: #722f37;
+  border-color: #722f37;
+  color: #ffffff;
+}
+
+:deep(.el-tag--custom.el-tag--light) {
+  background-color: #f0e6e8;
+  border-color: #d9a7ad;
+  color: #722f37;
 }
 </style>

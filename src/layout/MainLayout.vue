@@ -43,7 +43,7 @@
           v-if="authStore.user?.user_type === 'admin'"
           index="/users"
         >
-          <el-icon><UserFilled /></el-icon>
+          <el-icon><Setting /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
         
@@ -101,7 +101,7 @@
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { House, User, UserFilled, ArrowDown, Monitor, Warning, Connection } from '@element-plus/icons-vue'
+import { House, User, UserFilled, ArrowDown, Monitor, Warning, Connection, Setting } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()

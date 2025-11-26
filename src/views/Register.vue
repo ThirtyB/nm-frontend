@@ -153,7 +153,14 @@ const handleRegister = async () => {
       ElMessage.success('注册成功，请登录')
       router.push('/login')
     } else {
-      ElMessage.error(result.message)
+      // 处理特定的错误消息
+      let errorMessage = result.message || '注册失败'
+      if (result.message === 'Username is disabled and cannot be registered') {
+        errorMessage = '用户名已被禁用，无法注册'
+      } else if (result.message === 'Phone number is disabled and cannot be registered') {
+        errorMessage = '手机号已被禁用，无法注册'
+      }
+      ElMessage.error(errorMessage)
     }
   } catch (error) {
     // 注册验证失败，静默处理

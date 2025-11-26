@@ -3,7 +3,16 @@
     <el-card>
       <template #header>
         <div class="card-header">
-          <span>用户管理</span>
+          <div class="header-left">
+            <span>用户管理</span>
+            <el-switch
+              v-model="includeInactive"
+              active-text="显示所有用户"
+              inactive-text="仅显示活跃用户"
+              @change="handleIncludeInactiveChange"
+              style="margin-left: 20px;"
+            />
+          </div>
           <el-button type="primary" @click="showCreateDialog">
             <el-icon><Plus /></el-icon>
             新增用户
@@ -18,7 +27,18 @@
         stripe
       >
         <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="username" label="用户名" min-width="120">
+          <template #default="{ row }">
+            <span class="username-cell">
+              <span :class="{ 'current-username': row.id === currentUserId }">
+                {{ row.username }}
+              </span>
+              <el-tag v-if="row.id === currentUserId" type="warning" size="small" style="margin-left: 8px;">
+                自己
+              </el-tag>
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="phone" label="手机号" width="130">
           <template #default="{ row }">
             {{ row.phone || '-' }}
@@ -48,22 +68,34 @@
             {{ formatDate(row.last_login) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
             <el-button
               type="primary"
               size="small"
               @click="showEditDialog(row)"
+              :disabled="row.id === currentUserId"
+              :title="row.id === currentUserId ? '不能编辑自己的基本信息' : ''"
             >
               编辑
+            </el-button>
+            <el-button
+              :type="row.is_active ? 'warning' : 'success'"
+              size="small"
+              @click="toggleUserStatus(row)"
+              :disabled="row.id === currentUserId"
+              :title="row.id === currentUserId ? '不能停用/激活自己的账户' : ''"
+            >
+              {{ row.is_active ? '停用' : '激活' }}
             </el-button>
             <el-button
               type="danger"
               size="small"
               @click="handleDelete(row)"
-              :disabled="!row.is_active"
+              :disabled="row.id === currentUserId"
+              :title="row.id === currentUserId ? '不能删除自己的账户' : ''"
             >
-              删除用户
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -140,17 +172,23 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { useAuthStore } from '@/stores/auth'
 
 const userStore = useUserStore()
+const authStore = useAuthStore()
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const submitting = ref(false)
 const userFormRef = ref()
+const includeInactive = ref(true)
+
+// 获取当前登录用户的ID
+const currentUserId = computed(() => authStore.user?.id)
 
 const userForm = reactive({
   id: null,
@@ -292,6 +330,10 @@ const handleSubmit = async () => {
   }
 }
 
+const handleIncludeInactiveChange = async () => {
+  await userStore.fetchUsers(includeInactive.value)
+}
+
 const toggleUserStatus = async (user) => {
   try {
     const action = user.is_active ? '停用' : '激活'
@@ -305,13 +347,17 @@ const toggleUserStatus = async (user) => {
       }
     )
     
-    const result = await userStore.updateUser(user.id, {
-      is_active: !user.is_active
-    })
+    let result
+    if (user.is_active) {
+      result = await userStore.deactivateUser(user.id)
+    } else {
+      result = await userStore.activateUser(user.id)
+    }
     
     if (result.success) {
       ElMessage.success(`${action}成功`)
-      await userStore.fetchUsers()
+      // 刷新用户列表以保持当前筛选状态
+      await userStore.fetchUsers(includeInactive.value)
     } else {
       ElMessage.error(result.message)
     }
@@ -323,19 +369,20 @@ const toggleUserStatus = async (user) => {
 const handleDelete = async (user) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除用户 "${user.username}" 吗？删除后用户将被停用。`,
+      `确定要彻底删除用户 "${user.username}" 吗？此操作不可恢复！`,
       '警告',
       {
-        confirmButtonText: '确定',
+        confirmButtonText: '确定删除',
         cancelButtonText: '取消',
-        type: 'warning'
+        type: 'error'
       }
     )
     
     const result = await userStore.deleteUser(user.id)
     if (result.success) {
-      ElMessage.success('用户已停用')
-      await userStore.fetchUsers()
+      ElMessage.success('用户已删除')
+      // 刷新用户列表以保持当前筛选状态
+      await userStore.fetchUsers(includeInactive.value)
     } else {
       ElMessage.error(result.message)
     }
@@ -345,7 +392,7 @@ const handleDelete = async (user) => {
 }
 
 onMounted(() => {
-  userStore.fetchUsers()
+  userStore.fetchUsers(includeInactive.value)
 })
 </script>
 
@@ -363,6 +410,12 @@ onMounted(() => {
   color: #303133;
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+}
+
 .form-tip {
   font-size: 12px;
   color: #909399;
@@ -373,5 +426,15 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.username-cell {
+  display: flex;
+  align-items: center;
+}
+
+.current-username {
+  color: #ff8c00;
+  font-weight: 600;
 }
 </style>
