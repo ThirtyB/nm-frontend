@@ -47,6 +47,16 @@
           />
         </el-form-item>
         
+        <el-form-item label="手机号" prop="phone">
+          <el-input
+            v-model="registerForm.phone"
+            placeholder="请输入手机号（可选）"
+            :prefix-icon="Phone"
+            size="large"
+            clearable
+          />
+        </el-form-item>
+        
         <el-form-item>
           <el-button
             type="primary"
@@ -76,7 +86,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { User, Lock } from '@element-plus/icons-vue'
+import { User, Lock, Phone } from '@element-plus/icons-vue'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -88,12 +98,21 @@ const loading = ref(false)
 const registerForm = reactive({
   username: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  phone: ''
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
   if (value !== registerForm.password) {
     callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const validatePhone = (rule, value, callback) => {
+  if (value && !/^1[3-9]\d{9}$/.test(value)) {
+    callback(new Error('请输入正确的手机号格式'))
   } else {
     callback()
   }
@@ -111,6 +130,9 @@ const rules = {
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }
+  ],
+  phone: [
+    { validator: validatePhone, trigger: 'blur' }
   ]
 }
 
@@ -123,7 +145,8 @@ const handleRegister = async () => {
     
     const result = await authStore.register({
       username: registerForm.username,
-      password: registerForm.password
+      password: registerForm.password,
+      phone: registerForm.phone
     })
     
     if (result.success) {

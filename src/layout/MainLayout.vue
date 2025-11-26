@@ -23,7 +23,10 @@
           <span>节点详情</span>
         </el-menu-item>
         
-        <el-menu-item index="/system-status">
+        <el-menu-item
+          v-if="authStore.user?.user_type === 'admin'"
+          index="/system-status"
+        >
           <el-icon><Connection /></el-icon>
           <span>系统存活状态</span>
         </el-menu-item>
@@ -40,8 +43,13 @@
           v-if="authStore.user?.user_type === 'admin'"
           index="/users"
         >
-          <el-icon><User /></el-icon>
+          <el-icon><UserFilled /></el-icon>
           <span>用户管理</span>
+        </el-menu-item>
+        
+        <el-menu-item index="/profile">
+          <el-icon><User /></el-icon>
+          <span>个人信息</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -106,7 +114,8 @@ const getPageTitle = () => {
     'Nodes': '节点详情',
     'NodeDetail': '节点详情',
     'AlertManagement': '告警配置',
-    'SystemStatus': '系统存活状态'
+    'SystemStatus': '系统存活状态',
+    'Profile': '个人信息'
   }
   return routeMap[router.currentRoute.value.name] || ''
 }

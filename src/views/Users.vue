@@ -19,6 +19,11 @@
       >
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="phone" label="手机号" width="130">
+          <template #default="{ row }">
+            {{ row.phone || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="user_type" label="用户类型" width="120">
           <template #default="{ row }">
             <el-tag :type="row.user_type === 'admin' ? 'danger' : 'primary'">
@@ -98,6 +103,14 @@
           </div>
         </el-form-item>
         
+        <el-form-item label="手机号" prop="phone">
+          <el-input
+            v-model="userForm.phone"
+            placeholder="请输入手机号（可选）"
+            clearable
+          />
+        </el-form-item>
+        
         <el-form-item label="用户类型" prop="user_type">
           <el-select v-model="userForm.user_type" placeholder="请选择用户类型">
             <el-option label="普通用户" value="user" />
@@ -143,6 +156,7 @@ const userForm = reactive({
   id: null,
   username: '',
   password: '',
+  phone: '',
   user_type: 'user',
   is_active: true
 })
@@ -169,6 +183,14 @@ const validatePassword = (rule, value, callback) => {
   callback()
 }
 
+const validatePhone = (rule, value, callback) => {
+  if (value && !/^1[3-9]\d{9}$/.test(value)) {
+    callback(new Error('请输入正确的手机号格式'))
+  } else {
+    callback()
+  }
+}
+
 const rules = {
   username: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -176,6 +198,9 @@ const rules = {
   ],
   password: [
     { validator: validatePassword, trigger: 'blur' }
+  ],
+  phone: [
+    { validator: validatePhone, trigger: 'blur' }
   ],
   user_type: [
     { required: true, message: '请选择用户类型', trigger: 'change' }
@@ -199,6 +224,7 @@ const showEditDialog = (user) => {
   userForm.id = user.id
   userForm.username = user.username
   userForm.password = ''
+  userForm.phone = user.phone || ''
   userForm.user_type = user.user_type || 'user'
   userForm.is_active = user.is_active !== undefined ? user.is_active : true
 }
@@ -207,7 +233,9 @@ const resetForm = () => {
   userForm.id = null
   userForm.username = ''
   userForm.password = ''
+  userForm.phone = ''
   userForm.user_type = 'user'
+  userForm.is_active = true
   if (userFormRef.value) {
     userFormRef.value.resetFields()
   }
@@ -230,11 +258,15 @@ const handleSubmit = async () => {
       if (userForm.password) {
         updateData.password = userForm.password
       }
+      if (userForm.phone) {
+        updateData.phone = userForm.phone
+      }
       result = await userStore.updateUser(userForm.id, updateData)
     } else {
       result = await userStore.createUser({
         username: userForm.username,
         password: userForm.password,
+        phone: userForm.phone,
         user_type: userForm.user_type
       })
     }
