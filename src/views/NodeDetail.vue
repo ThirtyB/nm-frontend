@@ -111,22 +111,37 @@
               <div class="dimension-content">
                 <el-row :gutter="16">
                   <el-col :span="8">
-                    <el-statistic title="用户使用率" :value="latestMetrics.cpu_usr" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">用户使用率</div>
+                      <div class="statistic-value">{{ latestMetrics.cpu_usr }}%</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="系统使用率" :value="latestMetrics.cpu_sys" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">系统使用率</div>
+                      <div class="statistic-value">{{ latestMetrics.cpu_sys }}%</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="IO等待率" :value="latestMetrics.cpu_iow" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">IO等待率</div>
+                      <div class="statistic-value">{{ latestMetrics.cpu_iow }}%</div>
+                    </div>
                   </el-col>
                 </el-row>
                 <el-divider />
                 <el-row>
                   <el-col :span="12">
-                    <el-statistic title="总使用率" :value="latestMetrics.cpu_total" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">总使用率</div>
+                      <div class="statistic-value">{{ latestMetrics.cpu_total }}%</div>
+                    </div>
                   </el-col>
                   <el-col :span="12">
-                    <el-statistic title="中断次数" :value="latestMetrics.system_in" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">中断次数</div>
+                      <div class="statistic-value">{{ latestMetrics.system_in }}</div>
+                    </div>
                   </el-col>
                 </el-row>
               </div>
@@ -145,22 +160,37 @@
               <div class="dimension-content">
                 <el-row :gutter="16">
                   <el-col :span="12">
-                    <el-statistic title="总内存" :value="latestMetrics.mem_total_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">总内存</div>
+                      <div class="statistic-value">{{ latestMetrics.mem_total_mb }} MB</div>
+                    </div>
                   </el-col>
                   <el-col :span="12">
-                    <el-statistic title="空闲内存" :value="latestMetrics.mem_free_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">空闲内存</div>
+                      <div class="statistic-value">{{ latestMetrics.mem_free_mb }} MB</div>
+                    </div>
                   </el-col>
                 </el-row>
                 <el-divider />
                 <el-row>
                   <el-col :span="8">
-                    <el-statistic title="缓冲区" :value="latestMetrics.mem_buff_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">缓冲区</div>
+                      <div class="statistic-value">{{ latestMetrics.mem_buff_mb }} MB</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="缓存" :value="latestMetrics.mem_cache_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">缓存</div>
+                      <div class="statistic-value">{{ latestMetrics.mem_cache_mb }} MB</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="使用率" :value="latestMetrics.memory_usage_rate" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">使用率</div>
+                      <div class="statistic-value">{{ latestMetrics.memory_usage_rate }}%</div>
+                    </div>
                   </el-col>
                 </el-row>
               </div>
@@ -187,19 +217,31 @@
                     </div>
                   </el-col>
                   <el-col :span="12">
-                    <el-statistic title="总容量" :value="latestMetrics.disk_total_gb" suffix="GB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">总容量</div>
+                      <div class="statistic-value">{{ latestMetrics.disk_total_gb }} GB</div>
+                    </div>
                   </el-col>
                 </el-row>
                 <el-divider />
                 <el-row>
                   <el-col :span="8">
-                    <el-statistic title="已使用" :value="latestMetrics.disk_used_gb" suffix="GB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">已使用</div>
+                      <div class="statistic-value">{{ latestMetrics.disk_used_gb }} GB</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="使用率" :value="latestMetrics.disk_usage_rate" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">使用率</div>
+                      <div class="statistic-value">{{ latestMetrics.disk_usage_rate }}%</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="IOPS" :value="latestMetrics.disk_iops" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">IOPS</div>
+                      <div class="statistic-value">{{ latestMetrics.disk_iops }}</div>
+                    </div>
                   </el-col>
                 </el-row>
               </div>
@@ -218,19 +260,31 @@
               <div class="dimension-content">
                 <el-row :gutter="16">
                   <el-col :span="12">
-                    <el-statistic title="接收速率" :value="latestMetrics.net_rx_kbps" suffix="KB/s" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">接收速率</div>
+                      <div class="statistic-value">{{ latestMetrics.net_rx_kbps }} KB/s</div>
+                    </div>
                   </el-col>
                   <el-col :span="12">
-                    <el-statistic title="发送速率" :value="latestMetrics.net_tx_kbps" suffix="KB/s" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">发送速率</div>
+                      <div class="statistic-value">{{ latestMetrics.net_tx_kbps }} KB/s</div>
+                    </div>
                   </el-col>
                 </el-row>
                 <el-divider />
                 <el-row>
                   <el-col :span="12">
-                    <el-statistic title="总接收量" :value="latestMetrics.net_rx_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">总接收量</div>
+                      <div class="statistic-value">{{ latestMetrics.net_rx_mb }} MB</div>
+                    </div>
                   </el-col>
                   <el-col :span="12">
-                    <el-statistic title="总发送量" :value="latestMetrics.net_tx_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">总发送量</div>
+                      <div class="statistic-value">{{ latestMetrics.net_tx_mb }} MB</div>
+                    </div>
                   </el-col>
                 </el-row>
               </div>
@@ -251,22 +305,37 @@
               <div class="dimension-content">
                 <el-row :gutter="16">
                   <el-col :span="12">
-                    <el-statistic title="Swap总量" :value="latestMetrics.swap_total_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">Swap总量</div>
+                      <div class="statistic-value">{{ latestMetrics.swap_total_mb }} MB</div>
+                    </div>
                   </el-col>
                   <el-col :span="12">
-                    <el-statistic title="已使用" :value="latestMetrics.swap_used_mb" suffix="MB" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">已使用</div>
+                      <div class="statistic-value">{{ latestMetrics.swap_used_mb }} MB</div>
+                    </div>
                   </el-col>
                 </el-row>
                 <el-divider />
                 <el-row>
                   <el-col :span="8">
-                    <el-statistic title="换入量" :value="latestMetrics.swap_in" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">换入量</div>
+                      <div class="statistic-value">{{ latestMetrics.swap_in }}</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="换出量" :value="latestMetrics.swap_out" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">换出量</div>
+                      <div class="statistic-value">{{ latestMetrics.swap_out }}</div>
+                    </div>
                   </el-col>
                   <el-col :span="8">
-                    <el-statistic title="使用率" :value="latestMetrics.swap_usage_rate" suffix="%" />
+                    <div class="statistic-item">
+                      <div class="statistic-title">使用率</div>
+                      <div class="statistic-value">{{ latestMetrics.swap_usage_rate }}%</div>
+                    </div>
                   </el-col>
                 </el-row>
               </div>
@@ -419,12 +488,12 @@
             </el-table-column>
             <el-table-column prop="disk_total" label="总磁盘(GB)" width="120">
               <template #default="{ row }">
-                {{ row.disk_total ? (row.disk_total / 1024 / 1024 / 1024).toFixed(2) : '-' }}
+                {{ formatDiskSize(row.disk_total) }}
               </template>
             </el-table-column>
             <el-table-column prop="disk_used" label="已用磁盘(GB)" width="120">
               <template #default="{ row }">
-                {{ row.disk_used ? (row.disk_used / 1024 / 1024 / 1024).toFixed(2) : '-' }}
+                {{ formatDiskSize(row.disk_used) }}
               </template>
             </el-table-column>
             <el-table-column prop="net_rx_kbps" label="网络接收(KB/s)" width="130">
@@ -593,41 +662,75 @@ const latestMetrics = computed(() => {
   if (!metricsData.value.length) return {}
   const latest = metricsData.value[metricsData.value.length - 1]
   
-  // CPU相关 - 保留1位小数
-  const cpu_usr = ((latest.cpu_usr || 0)).toFixed(1)
-  const cpu_sys = ((latest.cpu_sys || 0)).toFixed(1)
-  const cpu_iow = ((latest.cpu_iow || 0)).toFixed(1)
-  const cpu_total = ((latest.cpu_usr || 0) + (latest.cpu_sys || 0) + (latest.cpu_iow || 0)).toFixed(1)
+  // CPU相关 - 保留2位小数
+  const cpu_usr = ((latest.cpu_usr || 0)).toFixed(2)
+  const cpu_sys = ((latest.cpu_sys || 0)).toFixed(2)
+  const cpu_iow = ((latest.cpu_iow || 0)).toFixed(2)
+  const cpu_total = ((latest.cpu_usr || 0) + (latest.cpu_sys || 0) + (latest.cpu_iow || 0)).toFixed(2)
   
-  // 内存相关 - 大数值保留1位小数，小数保留整数
-  const mem_total_mb = (latest.mem_total / 1024).toFixed(1)
-  const mem_free_mb = (latest.mem_free / 1024).toFixed(1)
-  const mem_buff_mb = (latest.mem_buff / 1024).toFixed(1)
-  const mem_cache_mb = (latest.mem_cache / 1024).toFixed(1)
-  let memory_usage_rate = 0
+  // 内存相关 - 保留2位小数
+  const mem_total_mb = (latest.mem_total / 1024).toFixed(2)
+  const mem_free_mb = (latest.mem_free / 1024).toFixed(2)
+  const mem_buff_mb = (latest.mem_buff / 1024).toFixed(2)
+  const mem_cache_mb = (latest.mem_cache / 1024).toFixed(2)
+  let memory_usage_rate = '0.00'
   if (latest.mem_total && latest.mem_free) {
-    memory_usage_rate = ((latest.mem_total - latest.mem_free) / latest.mem_total * 100).toFixed(1)
+    memory_usage_rate = ((latest.mem_total - latest.mem_free) / latest.mem_total * 100).toFixed(2)
   }
   
-  // 磁盘相关 - 大数值保留1位小数，使用率保留1位小数
+  // 磁盘相关 - 修复磁盘数据转换，保留2位小数
   const disk_name = latest.disk_name || '/'
-  const disk_total_gb = (latest.disk_total / 1024 / 1024 / 1024).toFixed(1)
-  const disk_used_gb = (latest.disk_used / 1024 / 1024 / 1024).toFixed(1)
-  const disk_usage_rate = (latest.disk_used_percent || 0).toFixed(1)
+  let disk_total_gb = '0.00'
+  let disk_used_gb = '0.00'
+  
+  // 检查磁盘数据的原始单位并正确转换
+  if (latest.disk_total) {
+    // 如果disk_total已经是GB单位
+    if (latest.disk_total < 1024) {
+      disk_total_gb = latest.disk_total.toFixed(2)
+    } else if (latest.disk_total < 1024 * 1024) {
+      // 如果是MB单位
+      disk_total_gb = (latest.disk_total / 1024).toFixed(2)
+    } else if (latest.disk_total < 1024 * 1024 * 1024) {
+      // 如果是KB单位
+      disk_total_gb = (latest.disk_total / 1024 / 1024).toFixed(2)
+    } else {
+      // 如果是Byte单位
+      disk_total_gb = (latest.disk_total / 1024 / 1024 / 1024).toFixed(2)
+    }
+  }
+  
+  if (latest.disk_used) {
+    // 如果disk_used已经是GB单位
+    if (latest.disk_used < 1024) {
+      disk_used_gb = latest.disk_used.toFixed(2)
+    } else if (latest.disk_used < 1024 * 1024) {
+      // 如果是MB单位
+      disk_used_gb = (latest.disk_used / 1024).toFixed(2)
+    } else if (latest.disk_used < 1024 * 1024 * 1024) {
+      // 如果是KB单位
+      disk_used_gb = (latest.disk_used / 1024 / 1024).toFixed(2)
+    } else {
+      // 如果是Byte单位
+      disk_used_gb = (latest.disk_used / 1024 / 1024 / 1024).toFixed(2)
+    }
+  }
+  
+  const disk_usage_rate = (latest.disk_used_percent || 0).toFixed(2)
   const disk_iops = latest.disk_iops || 0
   
-  // 网络相关 - 保留1位小数
-  const net_rx_kbps = ((latest.net_rx_kbps || 0)).toFixed(1)
-  const net_tx_kbps = ((latest.net_tx_kbps || 0)).toFixed(1)
-  const net_rx_mb = Math.abs(latest.net_rx_kbytes / 1024).toFixed(1)
-  const net_tx_mb = Math.abs(latest.net_tx_kbytes / 1024).toFixed(1)
+  // 网络相关 - 保留2位小数
+  const net_rx_kbps = ((latest.net_rx_kbps || 0)).toFixed(2)
+  const net_tx_kbps = ((latest.net_tx_kbps || 0)).toFixed(2)
+  const net_rx_mb = Math.abs(latest.net_rx_kbytes / 1024).toFixed(2)
+  const net_tx_mb = Math.abs(latest.net_tx_kbytes / 1024).toFixed(2)
   
-  // Swap相关 - 大数值保留1位小数，使用率保留1位小数
-  const swap_total_mb = (latest.swap_total / 1024).toFixed(1)
-  const swap_used_mb = (latest.swap_used / 1024).toFixed(1)
-  let swap_usage_rate = 0
+  // Swap相关 - 保留2位小数
+  const swap_total_mb = (latest.swap_total / 1024).toFixed(2)
+  const swap_used_mb = (latest.swap_used / 1024).toFixed(2)
+  let swap_usage_rate = '0.00'
   if (latest.swap_total && latest.swap_total > 0) {
-    swap_usage_rate = (latest.swap_used / latest.swap_total * 100).toFixed(1)
+    swap_usage_rate = (latest.swap_used / latest.swap_total * 100).toFixed(2)
   }
   const swap_in = latest.swap_in || 0
   const swap_out = latest.swap_out || 0
@@ -640,36 +743,36 @@ const latestMetrics = computed(() => {
   const ts = latest.ts || 0
   
   return {
-    // CPU
-    cpu_usr: parseFloat(cpu_usr),
-    cpu_sys: parseFloat(cpu_sys),
-    cpu_iow: parseFloat(cpu_iow),
-    cpu_total: parseFloat(cpu_total),
+    // CPU - 直接返回字符串，保留小数
+    cpu_usr: cpu_usr,
+    cpu_sys: cpu_sys,
+    cpu_iow: cpu_iow,
+    cpu_total: cpu_total,
     
-    // 内存
-    mem_total_mb: parseFloat(mem_total_mb),
-    mem_free_mb: parseFloat(mem_free_mb),
-    mem_buff_mb: parseFloat(mem_buff_mb),
-    mem_cache_mb: parseFloat(mem_cache_mb),
-    memory_usage_rate: parseFloat(memory_usage_rate),
+    // 内存 - 直接返回字符串，保留小数
+    mem_total_mb: mem_total_mb,
+    mem_free_mb: mem_free_mb,
+    mem_buff_mb: mem_buff_mb,
+    mem_cache_mb: mem_cache_mb,
+    memory_usage_rate: memory_usage_rate,
     
-    // 磁盘
+    // 磁盘 - 直接返回字符串，保留小数
     disk_name: disk_name,
-    disk_total_gb: parseFloat(disk_total_gb),
-    disk_used_gb: parseFloat(disk_used_gb),
-    disk_usage_rate: parseFloat(disk_usage_rate),
+    disk_total_gb: disk_total_gb,
+    disk_used_gb: disk_used_gb,
+    disk_usage_rate: disk_usage_rate,
     disk_iops: disk_iops,
     
-    // 网络
-    net_rx_kbps: parseFloat(net_rx_kbps),
-    net_tx_kbps: parseFloat(net_tx_kbps),
-    net_rx_mb: parseFloat(net_rx_mb),
-    net_tx_mb: parseFloat(net_tx_mb),
+    // 网络 - 直接返回字符串，保留小数
+    net_rx_kbps: net_rx_kbps,
+    net_tx_kbps: net_tx_kbps,
+    net_rx_mb: net_rx_mb,
+    net_tx_mb: net_tx_mb,
     
-    // Swap
-    swap_total_mb: parseFloat(swap_total_mb),
-    swap_used_mb: parseFloat(swap_used_mb),
-    swap_usage_rate: parseFloat(swap_usage_rate),
+    // Swap - 直接返回字符串，保留小数
+    swap_total_mb: swap_total_mb,
+    swap_used_mb: swap_used_mb,
+    swap_usage_rate: swap_usage_rate,
     swap_in: swap_in,
     swap_out: swap_out,
     
@@ -700,6 +803,28 @@ const formatNetworkRate = (rate) => {
   if (rate === null || rate === undefined) return '-'
   if (rate < 1024) return `${rate.toFixed(2)} KB/s`
   return `${(rate / 1024).toFixed(2)} MB/s`
+}
+
+// 格式化磁盘大小 - 智能检测单位并转换为GB
+const formatDiskSize = (size) => {
+  if (!size) return '-'
+  
+  // 如果已经是GB单位（小于1024）
+  if (size < 1024) {
+    return size.toFixed(2)
+  }
+  // 如果是MB单位（小于1024*1024）
+  else if (size < 1024 * 1024) {
+    return (size / 1024).toFixed(2)
+  }
+  // 如果是KB单位（小于1024*1024*1024）
+  else if (size < 1024 * 1024 * 1024) {
+    return (size / 1024 / 1024).toFixed(2)
+  }
+  // 如果是Byte单位
+  else {
+    return (size / 1024 / 1024 / 1024).toFixed(2)
+  }
 }
 
 // 返回节点列表
@@ -820,7 +945,7 @@ const renderCharts = () => {
           const dataIndex = params[0].dataIndex
           const fullTime = formatTimestamp(allTimes[dataIndex])
           const value = params[0].value
-          return `${fullTime}<br/>CPU使用率: ${value.toFixed(1)}%`
+          return `${fullTime}<br/>CPU使用率: ${value.toFixed(2)}%`
         }
       },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -843,7 +968,7 @@ const renderCharts = () => {
         max: cpuRange.max,
         axisLabel: {
           formatter: function(value) {
-            return value.toFixed(0)
+            return value.toFixed(2)
           }
         }
       },
@@ -875,7 +1000,7 @@ const renderCharts = () => {
           const dataIndex = params[0].dataIndex
           const fullTime = formatTimestamp(allTimes[dataIndex])
           const value = params[0].value
-          return `${fullTime}<br/>内存使用率: ${value.toFixed(1)}%`
+          return `${fullTime}<br/>内存使用率: ${value.toFixed(2)}%`
         }
       },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -898,7 +1023,7 @@ const renderCharts = () => {
         max: memoryRange.max,
         axisLabel: {
           formatter: function(value) {
-            return value.toFixed(0)
+            return value.toFixed(2)
           }
         }
       },
@@ -930,7 +1055,7 @@ const renderCharts = () => {
           const dataIndex = params[0].dataIndex
           const fullTime = formatTimestamp(allTimes[dataIndex])
           const value = params[0].value
-          return `${fullTime}<br/>磁盘使用率: ${value.toFixed(1)}%`
+          return `${fullTime}<br/>磁盘使用率: ${value.toFixed(2)}%`
         }
       },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -953,7 +1078,7 @@ const renderCharts = () => {
         max: diskRange.max,
         axisLabel: {
           formatter: function(value) {
-            return value.toFixed(0)
+            return value.toFixed(2)
           }
         }
       },
@@ -985,7 +1110,7 @@ const renderCharts = () => {
           const dataIndex = params[0].dataIndex
           const fullTime = formatTimestamp(allTimes[dataIndex])
           const value = params[0].value
-          return `${fullTime}<br/>网络速率: ${value.toFixed(1)} KB/s`
+          return `${fullTime}<br/>网络速率: ${value.toFixed(2)} KB/s`
         }
       },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -1009,9 +1134,9 @@ const renderCharts = () => {
         axisLabel: {
           formatter: function(value) {
             if (value >= 1024) {
-              return (value / 1024).toFixed(1) + 'M'
+              return (value / 1024).toFixed(2) + 'M'
             }
-            return value.toFixed(0)
+            return value.toFixed(2)
           }
         }
       },
@@ -1043,7 +1168,7 @@ const renderCharts = () => {
           const dataIndex = params[0].dataIndex
           const fullTime = formatTimestamp(allTimes[dataIndex])
           const value = params[0].value
-          return `${fullTime}<br/>Swap使用率: ${value.toFixed(1)}%`
+          return `${fullTime}<br/>Swap使用率: ${value.toFixed(2)}%`
         }
       },
       grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
@@ -1066,7 +1191,7 @@ const renderCharts = () => {
         max: swapRange.max,
         axisLabel: {
           formatter: function(value) {
-            return value.toFixed(0)
+            return value.toFixed(2)
           }
         }
       },
@@ -1177,8 +1302,8 @@ const exportData = () => {
       item.cpu_iow?.toFixed(2) || '',
       item.mem_total ? (item.mem_total / 1024).toFixed(2) : '',
       item.mem_free ? (item.mem_free / 1024).toFixed(2) : '',
-      item.disk_total ? (item.disk_total / 1024 / 1024 / 1024).toFixed(2) : '',
-      item.disk_used ? (item.disk_used / 1024 / 1024 / 1024).toFixed(2) : '',
+      formatDiskSize(item.disk_total),
+      formatDiskSize(item.disk_used),
       item.net_rx_kbps?.toFixed(2) || '',
       item.net_tx_kbps?.toFixed(2) || ''
     ])
@@ -1465,6 +1590,23 @@ onUnmounted(() => {
 }
 
 .dimension-content :deep(.el-statistic__content) {
+  color: #303133;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.statistic-item {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.statistic-title {
+  color: #909399;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.statistic-value {
   color: #303133;
   font-size: 20px;
   font-weight: 600;
