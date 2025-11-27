@@ -1,0 +1,46 @@
+name: Deploy to Production
+
+on:
+  workflow_run:
+    workflows: ["Docker Build and Push"]
+    types:
+      - completed
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USER }}
+        key: ${{ secrets.DEPLOY_KEY }}
+        script: |
+          cd /opt/nodemonitor-frontend
+          
+          # 拉取最新镜像
+          docker pull ${{ secrets.REGISTRY }}/${{ github.repository }}:main
+          
+          # 停止旧容器
+          docker stop nodemonitor-frontend || true
+          docker rm nodemonitor-frontend || true
+          
+          # 启动新容器
+          docker run -d \
+            --name nodemonitor-frontend \
+            --restart unless-stopped \
+            -p 80:80 \
+            -e NODE_ENV=production \
+            ${{ secrets.REGISTRY }}/${{ github.repository }}:main
+            
+          # 清理旧镜像
+          docker image prune -f
+          
+          echo "部署完成！"
