@@ -52,5 +52,14 @@ jobs:
     - name: Build project
       run: pnpm build
       
-    - name: Run tests (if present)
-      run: pnpm test || echo "No tests configured, skipping..."
+    - name: Run tests
+      run: pnpm test:run
+      
+    - name: Upload coverage reports
+      if: always()
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage/lcov.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
