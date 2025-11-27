@@ -1,0 +1,45 @@
+# 依赖目录
+node_modules
+dist
+
+# 开发配置文件
+.env.local
+.env.*.local
+
+# 日志文件
+logs
+*.log
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 编辑器和IDE文件
+.vscode
+.idea
+*.swp
+*.swo
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker文件
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# 测试文件
+test
+tests
+coverage
+
+# 文档文件
+*.md
+docs
